@@ -1,5 +1,12 @@
 # ARCHITECTURE.md
 
+> **Historical audit snapshot (June 22–25). Current status as of July 4:**
+> local Git baseline `25a12b1` exists; classification starts at 50 and
+> high-priority alerting at 95; prediction output uses `is_alert_triggered`;
+> report safety wording is corrected; and 10 tests pass. Shared GitHub, live
+> report persistence, Daniel integration, and Willow integration remain pending.
+> See `../Documents/PROGRESS.md` and `../../todo-7-4.md` for current status.
+
 ## Current architecture (what is actually built)
 
 A single Python package (`src/`) with three independent, individually-tested

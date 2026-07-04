@@ -1,5 +1,12 @@
 # INTEGRATION_PLAN.md
 
+> **Historical six-week plan. Current status as of July 4:** local Git and the
+> baseline commit are complete; dependency pinning is complete; threshold
+> semantics and report wording are corrected; and 10 tests pass. The active
+> schedule is now the July 4–23 recovery plan in `../../todo-7-4.md`. Shared
+> GitHub, live report persistence, Daniel integration, and Willow integration
+> remain pending.
+
 A realistic 6-week plan from current state (working detector + reporter,
 zero real integration, no version control) to a demo-ready integrated system.
 Each week assumes teammate availability is uncertain — every week has a fallback

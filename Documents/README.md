@@ -18,6 +18,12 @@ the flow records Suricata produces and scoring each one in real time.
 Network traffic → Suricata (produces flow records) → THIS COMPONENT → score + report
 ```
 
+**Current status (July 4, 2026):** The trained model, standalone demo, template
+report, and 10 automated tests work. Classification uses score 50 and
+high-priority alerting uses score 95. Local Git baseline `25a12b1` exists.
+Live-tail report persistence, shared GitHub, and teammate integrations are not
+complete.
+
 ---
 
 ## 2. Requirements
@@ -204,10 +210,11 @@ evidence. See `audit/CURRENT_STATE.md` for the full writeup.
 
 ## 6. How Incident Reports Work
 
-Handled by `src/reporting/report.py`. Given an attack event (the flow data plus
-its score/classification), `generate_report()` produces a short, plain-language
-summary intended for a non-technical reader: what was detected, where it came
-from, how severe it was, and recommended next steps.
+Handled by `src/reporting/report.py`. Given a scored event,
+`generate_report()` produces a short, plain-language summary intended for a
+non-technical reader: what was detected, the source and destination details,
+the model risk score, and recommended human-review steps. It explicitly states
+that no automatic blocking or network lockdown occurred.
 
 Two backends, selected via the `backend` argument:
 

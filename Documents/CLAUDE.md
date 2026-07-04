@@ -6,6 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Cybersecurity threat detection system for a multi-VM lab network. This component (Madison's) trains a Random Forest classifier on CICIDS2017 network flow data, scores live Suricata EVE JSON flows, and generates incident reports. It connects to Daniel's Suricata router VM (upstream) and Willow's dashboard/database (downstream).
 
+**Current status (2026-07-04):** Local Git baseline `25a12b1` exists at the
+Senior Project root. Classification begins at score 50; high-priority alerting
+begins at 95. Template report wording has been corrected to require human review
+and state that no automatic blocking occurred. The test suite has 10 passing
+tests. Shared GitHub, live report persistence, Daniel integration, and Willow
+integration remain pending.
+
 ## Commands
 
 **Setup (one-time):**
@@ -84,7 +91,8 @@ high-priority alert. No automatic blocking or network lockdown is performed.
 
 Tests in `tests/` require no trained model or dataset:
 - `test_suricata_reader.py` — validates `flow_to_features()` output (required fields, values, division-by-zero safety)
-- `test_report.py` — validates incident report generation with mock flow data
+- `test_report.py` — validates incident facts, missing-field behavior, and
+  containment-safety wording
 - `test_predict.py` — validates that classification starts at 50 while
   high-priority alerting starts at 95
 

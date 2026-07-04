@@ -2,7 +2,8 @@
 
 **Author:** Madison
 **Date:** 2026-06-26
-**Status:** Design / not yet built — see "Status" at the bottom.
+**Status:** Network design / teammate implementation not yet available. Madison's
+local AI component is working; see "Status" at the bottom.
 
 This document describes the physical/virtual lab network the three-person
 project runs on top of: how the Attacker VM, the Router VM (Daniel's Suricata
@@ -141,7 +142,18 @@ VM are the only way to get a real, known-ground-truth signal.
 
 ## 6. Status
 
-**Not yet built.** As of this writing:
+**Updated July 4, 2026:**
+
+- Madison's local model, feature mapping, classification/alert thresholds,
+  standalone report demo, and 10-test suite are working.
+- Local Git exists at the Senior Project root with baseline commit `25a12b1`.
+- Automatic network lockdown is explicitly out of scope; alerts require human
+  review.
+- Live `tail_eve()` report persistence and the dashboard handoff are not built.
+- No shared GitHub remote exists yet.
+- Teammate artifacts have not been received in this workspace.
+
+**Network status:**
 - No GNS3 topology exists yet.
 - Daniel's Suricata work so far has been offline-mode validation against a
   downloaded pcap (`suricata -r`), not a live router-mode deployment.

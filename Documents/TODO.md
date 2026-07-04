@@ -14,6 +14,9 @@ you go. Things already built by the scaffold are checked. Order matters top-to-b
 - [x] `python -m venv .venv` and activate it
 - [x] `pip install -r requirements.txt`
 - [x] Confirm it runs: `python -m src.detector.suricata_reader --demo` and `pytest -q`
+- [x] Initialize local Git at the Senior Project root and preserve baseline commit
+      `25a12b1`
+- [ ] Create the shared GitHub remote, add collaborators, and push `main`
 
 ## Part A — Train the detector (your main deliverable)
 - [x] **Download CICIDS2017** MachineLearningCVE CSVs into `data/` (see `data/README.md`)
@@ -23,6 +26,9 @@ you go. Things already built by the scaffold are checked. Order matters top-to-b
 - [x] If not good enough: tune (try more trees, try XGBoost, adjust the score threshold) — not needed
 - [x] Save the model (`python -m src.detector.train` writes `models/detector.joblib`)
 - [x] Confirm scoring works: `python -m src.detector.suricata_reader --demo` now prints scores
+- [x] Separate binary classification (score ≥50) from high-priority alerting
+      (score ≥95)
+- [x] Rename prediction alert output to `is_alert_triggered`
 
 ## Part B — Integration (with the team)
 - [x] Get a **real `eve.json` sample** — 2026-06-25: self-sourced rather than from
@@ -49,14 +55,17 @@ you go. Things already built by the scaffold are checked. Order matters top-to-b
 
 ## Part C — Incident reports
 - [x] Template report works today (`python -m src.reporting.report`)
-- [ ] Decide report backend (template is fine to ship; local Ollama is the upgrade)
+- [x] Correct template wording: human review, no automatic blocking/lockdown claims,
+      and omit missing MAC addresses
+- [x] Decide current report backend: ship the deterministic template; Ollama remains
+      an optional future enhancement
 - [ ] (Optional) Install Ollama app, `ollama pull llama3.1:8b`, uncomment `ollama` in
       `requirements.txt`, call `generate_report(event, backend="ollama")`
-- [ ] Tweak the wording in `src/reporting/prompts.py` until reports read well to a
-      non-technical person (covers Design Doc TC-10 + Risk 5)
+- [ ] Promote report generation into the live `tail_eve()` path
 
 ## Part D — Validate & document (Sprint 4)
-- [ ] Tune false positives down (Design Doc wants < 5%)
+- [x] Validate false positives against the held-out dataset: 0.41% at the model
+      classification boundary and 0.15% at the high-priority alert threshold
 - [ ] Write up results for test cases TC-01, TC-02, TC-03, TC-07, TC-10
 - [ ] Add a short "AI model" section to the team's final report / design doc
 - [ ] Hand Daniel: `models/detector.joblib`, `models/feature_columns.json`,

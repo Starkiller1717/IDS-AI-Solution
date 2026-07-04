@@ -117,7 +117,11 @@ probability is scaled to a **0–100 model risk score**. Scores **≥50** receiv
 does not automatically block traffic or lock down the network.
 
 **Step 4 — Incident report**  
-Every flagged attack produces a plain-language report with the attacker IP, score, targeted port, and recommended actions. This goes to Willow's dashboard so non-technical users can understand what happened.
+The standalone demo and one-shot scorer can produce a plain-language report for
+a high-priority alert. The report uses the source IP, score, destination port,
+protocol, timestamp, and recommended review actions. It does not claim that the
+source is confirmed malicious or automatically blocked. Live-tail report
+generation and Willow dashboard delivery are still pending.
 
 ### Files involved
 
@@ -164,7 +168,10 @@ The key points to emphasize in a presentation or writeup:
 
 4. **The results:** 99.55% accuracy, 0.41% false-positive rate. The design document targets were 90% and 5% respectively — we exceeded both.
 
-5. **What's next:** Sprint 2 is underway — as of 2026-06-25, a real Suricata 6.0.4 instance has been run offline against a real ~894 MB pcap, producing a real 54,914-flow `eve.json` that validated the feature mapping with zero changes needed. Still pending: live integration with Daniel's actual router VM and Willow's dashboard contract.
+5. **What's next:** As of 2026-07-04, classification/alert semantics and report
+   wording are corrected, local Git is initialized, and 10 tests pass. Still
+   pending: live integration with Daniel's router VM, report persistence in the
+   live tail path, a shared GitHub remote, and Willow's dashboard contract.
 
 ### For a general audience (non-technical)
 

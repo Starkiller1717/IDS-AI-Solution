@@ -1,5 +1,13 @@
 # AUDIT_SUMMARY.md
 
+> **Historical audit snapshot (June 22–25). Current status as of July 4:**
+> local Git baseline `25a12b1` exists; classification starts at 50 and
+> high-priority alerting at 95; prediction output uses `is_alert_triggered`;
+> report safety wording is corrected; and 10 tests pass. Shared GitHub, live
+> report persistence, Daniel integration, and Willow integration remain pending.
+> Statements below that say Git is missing or only five tests exist are retained
+> as historical findings, not current status.
+
 Audit date: 2026-06-22. Method: read every file in the repo, ran the test suite
 and every documented demo command, pulled real rows from the training CSVs to
 independently verify the model, and grepped for claimed-but-unverified

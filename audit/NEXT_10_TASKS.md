@@ -1,12 +1,18 @@
 # NEXT_10_TASKS.md
 
+> **Status update, July 4:** task 1 (local Git baseline), task 2 (run the
+> end-to-end demo), and task 5 (dependency lock) are complete. Classification
+> and alert thresholds are now separate, report wording is corrected, and
+> 10 tests pass. Shared GitHub and tasks requiring Daniel or Willow remain
+> pending. Use `../../todo-7-4.md` for the active priority list.
+
 Ordered by impact and uncertainty reduction — earlier items either prevent
 irreversible loss (no version control) or resolve the biggest unknowns cheaply.
 Exact commands are given wherever possible.
 
-## 1. Initialize git and make the first commit
-**Why first:** there is currently zero version control. Every hour of work from
-here forward is unrecoverable if something goes wrong until this exists.
+## 1. Initialize git and make the first commit — completed July 4
+Local Git now exists at the Senior Project root on `main`; baseline commit:
+`25a12b1`.
 ```powershell
 git init
 # fix .gitignore first (see PROJECT_STATUS.md) — add data/zips/ and

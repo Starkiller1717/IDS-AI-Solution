@@ -13,7 +13,24 @@ It runs entirely on your laptop. You hand the finished model + `suricata_reader.
 to Daniel to drop on the router VM, and your output (score + report) feeds Willow's
 dashboard. Nothing here touches the project Word documents.
 
-> **What's left to do?** See [TODO.md](TODO.md) for the full check-off-as-you-go list.
+> **What's left to do?** See [Documents/TODO.md](Documents/TODO.md) for the
+> check-off-as-you-go list and [../todo-7-4.md](../todo-7-4.md) for the current
+> recovery plan.
+
+## Current status — July 4, 2026
+
+- Local Git repository initialized at the Senior Project root; baseline commit:
+  `25a12b1`.
+- Model classification threshold: 50.
+- High-priority alert threshold: 95.
+- Template report corrected to require human review and state that no automatic
+  blocking or lockdown occurred.
+- Test suite: **10 passed**.
+- Standalone detector-to-report demo: working.
+- Still pending: shared GitHub remote, live Daniel/Suricata integration,
+  incident persistence, and Willow's dashboard contract.
+- The trained model remains local and is intentionally excluded from regular Git
+  because it is approximately 110 MB.
 
 ---
 

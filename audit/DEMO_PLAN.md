@@ -1,12 +1,17 @@
 # DEMO_PLAN.md
 
+> **Updated status, July 4:** the local Git baseline is `25a12b1`,
+> classification begins at 50, high-priority alerting begins at 95, report
+> wording has been corrected, and 10 tests pass. The demo remains standalone;
+> live-tail report persistence and teammate integrations are still pending.
+
 ## Minimum viable capstone demo (achievable right now, solo, offline)
 
 This requires nothing from Daniel, Willow, Suricata, or Ollama. Confirmed working
 today:
 
 ```powershell
-pytest -q              # 5 passed — shows the code is tested
+pytest -q              # 10 passed — shows the code is tested
 python demo.py          # the full pipeline, end to end
 ```
 

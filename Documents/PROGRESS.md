@@ -1,12 +1,28 @@
 # AI Component — Progress & Technical Overview
 
 **Author:** Madison  
-**Date:** June 8, 2026 (Sprint 1); updated June 25, 2026 (Sprint 2 in progress)  
+**Date:** June 8, 2026 (Sprint 1); updated July 4, 2026  
 **Sprint:** 1 complete, 2 in progress
 
 ---
 
 ## What Has Been Accomplished
+
+### July 4 recovery update
+
+| Task | Status |
+|------|--------|
+| Local Git repository initialized at the Senior Project root | Done — baseline commit `25a12b1` on `main` |
+| Root `.gitignore` added and large/local artifacts verified excluded | Done — datasets, PCAPs, Suricata logs, `.venv`, caches, and `detector.joblib` are not tracked |
+| Classification and alert decisions separated | Done — classify at 50, high-priority alert at 95 |
+| Automatic-response terminology removed from prediction output | Done — output uses `is_alert_triggered` |
+| Template report safety wording corrected | Done — human review required; no external-source, blocking, or lockdown claims |
+| Missing MAC addresses omitted from reports | Done |
+| Full test suite | **10 passed** |
+| Shared GitHub remote | Pending |
+| Live report generation and incident persistence | Pending |
+| Daniel live Suricata/GNS3 integration | Pending |
+| Willow dashboard contract | Pending |
 
 ### Sprint 1 (complete)
 
@@ -21,7 +37,7 @@
 | Trained model saved to `models/detector.joblib` | Done |
 | Live scoring verified: `--demo` prints per-flow scores 0–100 | Done |
 | Template incident report working | Done |
-| Full test suite passing (9 tests) | Done |
+| Full test suite passing (10 tests) | Done |
 
 ### Sprint 2 (in progress, started 2026-06-25)
 
@@ -36,7 +52,7 @@
 | Installed the full ET Open ruleset (`suricata-update`, 66,709 rules) and re-ran for a second, independent signal | Done — Suricata's own signatures also flagged `10.0.0.45` (via an outdated-Flash policy hit, consistent with mid-2015 exploit-kit targeting), though on different destination IPs than the ML model flagged |
 | High-priority alert threshold raised from 70 → **95**, per professor feedback; classification remains at **50** | Done (`src/config.py`) |
 | Dependency lock file (`requirements-lock.txt`) generated, pinning exact versions (`pandas==3.0.3`, `numpy==2.4.6`, `scikit-learn==1.9.0`, `joblib==1.5.3`) | Done |
-| Git version control initialized for the project | **Still pending** |
+| Git version control initialized for the project | Done — root repository, branch `main`, baseline commit `25a12b1` |
 | Real `eve.json` from Daniel's actual router VM | **Still pending** — the validation above used a self-sourced pcap, not Daniel's live Suricata instance |
 | Willow's dashboard/DB contract | **Still pending** |
 | `demo.py` added: wires `suricata_reader.handle_flow()` → `report.generate_report()` so the full pipeline runs end-to-end (`python demo.py`) | Done — first proof in the repo that detector and reporter work together, not just independently |
@@ -159,23 +175,27 @@ Sample output (template backend):
 
 ```
 Summary:
-We detected port scan on your network and flagged it as a likely attack.
+A port scan was detected and flagged for human review.
 
 What we saw:
-- Coming from IP address: 10.0.0.66 (device hardware ID / MAC: 08:00:27:ab:cd:ef)
-- Type of activity: port scan
-- Severity score: 92 out of 100
-- Targeted port: 22
+- Source IP address: 10.0.0.66
+- Reported activity: port scan
+- Model risk score: 92 out of 100
+- Source MAC address: 08:00:27:ab:cd:ef
+- Destination port: 22
+- Protocol: TCP
 - Time detected: 2026-06-07T14:32:10
 
 What this means for you:
-Someone outside your normal devices was probing or attacking your network. A high
-score means we are fairly confident this was not normal traffic.
+The network flow matched patterns the detection model associates with attack
+traffic. This alert does not prove malicious activity by itself and should be
+reviewed alongside the related Suricata event and expected network activity.
 
 Recommended actions:
-- The system has flagged this source; keep it blocked / in lockdown for now.
-- If you don't recognize this activity, leave the lockdown on until it stops.
-- Note the time and IP above in case you need to report it to your provider.
+- Verify whether you recognize the source IP address and destination service.
+- Review related Suricata alerts and look for repeated or unexpected activity.
+- Continue monitoring and escalate the incident if the activity cannot be explained.
+- No automatic blocking or network lockdown was performed.
 ```
 
 ---
@@ -261,4 +281,6 @@ ai-implementation/
    output too, to confirm his specific config matches.
 2. **Agree on output format with Willow** — replace the `print()` in `tail_eve()` with a database write or JSON file that Willow's dashboard can consume. **Still pending.**
 3. **End-to-end test** — Daniel's Attacker VM runs an Nmap scan, it appears on Willow's dashboard with a score and a report. **Still pending** — requires both items above.
-4. **Initialize git version control for this project.** **Still pending** — currently the single biggest risk to this work (no commit history, no recovery if something is overwritten).
+4. ~~**Initialize git version control for this project.**~~ Done July 4 —
+   repository initialized at the project root with baseline commit `25a12b1`.
+   Creating and pushing to the shared GitHub remote remains pending.
