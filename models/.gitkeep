@@ -1,0 +1,2 @@
+# This folder holds the trained model (detector.joblib) and feature_columns.json.
+# Those files are produced by `python -m src.detector.train` and are gitignored.

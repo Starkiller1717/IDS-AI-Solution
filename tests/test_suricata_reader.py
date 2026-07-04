@@ -1,0 +1,50 @@
+"""
+Tests for the Suricata-flow -> features mapping.
+
+These do NOT need a trained model — they only check the feature translation,
+which is the part most likely to silently break during integration.
+"""
+
+from src import config
+from src.detector.suricata_reader import flow_to_features
+
+# A made-up "port scan"-style flow: one tiny packet out, nothing back.
+SCAN_FLOW = {
+    "event_type": "flow",
+    "src_ip": "10.0.0.66",
+    "dest_ip": "10.0.0.1",
+    "dest_port": 22,
+    "proto": "TCP",
+    "flow": {
+        "pkts_toserver": 1,
+        "pkts_toclient": 0,
+        "bytes_toserver": 40,
+        "bytes_toclient": 0,
+        "start": "2026-06-07T14:32:10.000000+0000",
+        "end": "2026-06-07T14:32:10.001000+0000",
+    },
+}
+
+
+def test_mapping_produces_every_required_feature():
+    feats = flow_to_features(SCAN_FLOW)
+    # The model will break at runtime if any expected feature is missing.
+    for name in config.SURICATA_ALIGNED_FEATURES:
+        assert name in feats, f"mapping is missing feature: {name}"
+
+
+def test_mapping_values_are_sensible():
+    feats = flow_to_features(SCAN_FLOW)
+    assert feats["Destination Port"] == 22
+    assert feats["Total Fwd Packets"] == 1
+    assert feats["Total Backward Packets"] == 0
+    assert feats["Total Length of Fwd Packets"] == 40
+    # 0.001 s duration -> 1000 microseconds
+    assert feats["Flow Duration"] == 1000.0
+
+
+def test_zero_duration_does_not_divide_by_zero():
+    flow = {"event_type": "flow", "dest_port": 80, "flow": {"pkts_toserver": 1}}
+    feats = flow_to_features(flow)  # start/end missing -> duration 0
+    assert feats["Flow Bytes/s"] == 0.0
+    assert feats["Flow Packets/s"] == 0.0

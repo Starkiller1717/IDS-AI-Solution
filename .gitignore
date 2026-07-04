@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Datasets are large — keep them out of git. Download into data/ locally.
+data/*.csv
+data/MachineLearningCVE/
+data/zips/
+data/GeneratedLabelledFlows.zip
+
+# Real pcaps and Suricata output are large and regenerable — keep them local.
+data/pcaps/
+data/suricata-logs/
+
+# Trained models can be large/regenerated — keep the folder, ignore the artifacts.
+models/*.joblib
+models/*.pkl
+
+# OS junk
+.DS_Store
+Thumbs.db

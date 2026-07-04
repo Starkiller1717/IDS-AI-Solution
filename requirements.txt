@@ -1,0 +1,20 @@
+# Core ML + data stack for the detection model
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+joblib>=1.3
+
+# Plotting (used in the notebooks for exploration / evaluation)
+matplotlib>=3.7
+seaborn>=0.12
+
+# Notebooks
+jupyter>=1.0
+
+# Testing
+pytest>=7.4
+
+# OPTIONAL — only needed if you use the local LLM backend for reports.
+# Ollama itself is a separate desktop install (https://ollama.com); this is just
+# the Python client. The template report backend works WITHOUT this.
+# ollama>=0.3
