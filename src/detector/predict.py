@@ -65,6 +65,43 @@ def predict(features: dict) -> dict:
     }
 
 
+def predict_batch(features_list: list[dict]) -> list[dict]:
+    """
+    Score many flows at once.
+
+    Same contract as predict() but accepts a list and returns a list, calling
+    predict_proba() once on the full matrix instead of once per flow.
+    Use this for --eve-once (finished files); keep predict() for live tailing.
+    """
+    if not features_list:
+        return []
+
+    model = _load_model()
+
+    for features in features_list:
+        missing = [f for f in config.SURICATA_ALIGNED_FEATURES if f not in features]
+        if missing:
+            raise KeyError(f"Missing required features: {missing}")
+
+    rows = [
+        [float(features[f]) for f in config.SURICATA_ALIGNED_FEATURES]
+        for features in features_list
+    ]
+    matrix = pd.DataFrame(rows, columns=config.SURICATA_ALIGNED_FEATURES)
+
+    probabilities = model.predict_proba(matrix)[:, 1]
+    scores = [int(round(p * 100)) for p in probabilities]
+
+    return [
+        {
+            "classification": "attack" if s >= config.CLASSIFICATION_THRESHOLD else "normal",
+            "score": s,
+            "is_alert_triggered": s >= config.ALERT_THRESHOLD,
+        }
+        for s in scores
+    ]
+
+
 if __name__ == "__main__":
     # Quick manual smoke test with made-up numbers (needs a trained model).
     demo_features = {

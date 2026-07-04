@@ -144,7 +144,7 @@ def run_demo() -> None:
         print()
 
 
-def score_eve_file(eve_path: Path, progress_every: int = 5000) -> None:
+def score_eve_file(eve_path: Path) -> None:
     """
     Read a FINISHED eve.json once (e.g. from offline `suricata -r`) and score every flow.
 
@@ -154,15 +154,16 @@ def score_eve_file(eve_path: Path, progress_every: int = 5000) -> None:
     pcap's eve.json and it scores every flow, generating a full incident report for
     anything that crosses the threshold, the same way `demo.py` does.
 
-    Doesn't print a line per flow (real captures can have tens of thousands) — only
-    triggered flows get full detail + a report; everything else gets a periodic
-    progress count so large pcaps stay usable on screen.
+    Reads the whole file first, then calls predict_proba() once on the full matrix
+    (batch prediction) instead of once per flow. Much faster for large captures.
     """
+    from src.detector.predict import predict_batch
     from src.reporting.report import generate_report
 
-    print(f"Scoring {eve_path} (one-shot, not tailing)...\n")
-    flow_count = 0
-    triggered_count = 0
+    print(f"Loading {eve_path}...")
+    flow_events = []
+    features_list = []
+    skipped = 0
     with eve_path.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -171,29 +172,48 @@ def score_eve_file(eve_path: Path, progress_every: int = 5000) -> None:
             try:
                 event = json.loads(line)
             except json.JSONDecodeError:
+                skipped += 1
                 continue
-            result = handle_flow(event)
-            if result is None:
+            if event.get("event_type") != "flow":
                 continue
-            flow_count += 1
-            if result["is_alert_triggered"]:
-                triggered_count += 1
-                print(f"[ALERT score={result['score']}] {result}")
-                report = generate_report(
-                    {
-                        "timestamp": result["timestamp"],
-                        "attacker_ip": result["attacker_ip"],
-                        "attack_type": "suspicious flow",
-                        "score": result["score"],
-                        "dest_port": result["dest_port"],
-                        "proto": result["proto"],
-                    },
-                    backend="template",
-                )
-                print(report)
-            elif flow_count % progress_every == 0:
-                print(f"  ...{flow_count} flows scored so far, none triggered yet")
-    print(f"\nDone. {flow_count} flow events scored, {triggered_count} crossed the threshold.")
+            flow_events.append(event)
+            features_list.append(flow_to_features(event))
+
+    print(f"Loaded {len(flow_events):,} flow events ({skipped} malformed lines skipped).")
+    if not flow_events:
+        print("No flow events found — nothing to score.")
+        return
+
+    print("Scoring all flows in one batch...")
+    results = predict_batch(features_list)
+
+    triggered_count = 0
+    for event, result in zip(flow_events, results):
+        if result["is_alert_triggered"]:
+            triggered_count += 1
+            alert_info = {
+                "timestamp": event.get("timestamp"),
+                "attacker_ip": event.get("src_ip"),
+                "dest_ip": event.get("dest_ip"),
+                "dest_port": event.get("dest_port"),
+                "proto": event.get("proto"),
+                **result,
+            }
+            print(f"[ALERT score={result['score']}] {alert_info}")
+            report = generate_report(
+                {
+                    "timestamp": event.get("timestamp"),
+                    "attacker_ip": event.get("src_ip"),
+                    "attack_type": "suspicious flow",
+                    "score": result["score"],
+                    "dest_port": event.get("dest_port"),
+                    "proto": event.get("proto"),
+                },
+                backend="template",
+            )
+            print(report)
+
+    print(f"\nDone. {len(flow_events):,} flows scored, {triggered_count} crossed the threshold.")
 
 
 def main() -> None:
