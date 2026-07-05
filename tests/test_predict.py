@@ -1,10 +1,13 @@
 """Tests for classification and high-priority alert threshold behavior."""
 
+import json
+
 import numpy as np
 import pytest
 
 from src import config
 from src.detector import predict as predict_module
+from src.detector.predict import _check_feature_alignment
 
 
 class FixedProbabilityModel:
@@ -42,6 +45,11 @@ def feature_row_for_score(score: int) -> dict:
         (0.50, 50, "attack", False),
         (0.94, 94, "attack", False),
         (0.95, 95, "attack", True),
+        # Decisions use the raw probability, not the rounded score, so these
+        # sub-percent cases must NOT flip on the rounded display value:
+        (0.947, 95, "attack", False),  # displays 95 but 94.7 < 95 -> no alert
+        (0.953, 95, "attack", True),   # displays 95 and 95.3 >= 95 -> alert
+        (0.497, 50, "normal", False),  # displays 50 but 49.7 < 50 -> classified normal
     ],
 )
 def test_classification_and_alert_thresholds_are_separate(
@@ -90,3 +98,35 @@ def test_predict_batch_rejects_missing_features(monkeypatch):
 
     with pytest.raises(KeyError, match="Missing required features"):
         predict_module.predict_batch([{}])
+
+
+class ModelWithRecordedFeatures:
+    """Stand-in for an sklearn model that remembers its training feature order."""
+
+    def __init__(self, feature_names):
+        self.feature_names_in_ = feature_names
+
+
+def _write_artifact(tmp_path, monkeypatch, feature_names):
+    artifact = tmp_path / "feature_columns.json"
+    artifact.write_text(json.dumps(feature_names), encoding="utf-8")
+    monkeypatch.setattr(config, "FEATURE_COLUMNS_PATH", artifact)
+
+
+def test_feature_alignment_passes_when_config_artifact_and_model_agree(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, monkeypatch, list(config.SURICATA_ALIGNED_FEATURES))
+    # Matching recorded features -> fine; a model with no recorded features -> also fine.
+    _check_feature_alignment(ModelWithRecordedFeatures(list(config.SURICATA_ALIGNED_FEATURES)))
+    _check_feature_alignment(object())
+
+
+def test_feature_alignment_raises_when_artifact_drifts(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, monkeypatch, ["Destination Port", "something else"])
+    with pytest.raises(ValueError, match="feature_columns.json"):
+        _check_feature_alignment(object())
+
+
+def test_feature_alignment_raises_when_model_drifts(tmp_path, monkeypatch):
+    _write_artifact(tmp_path, monkeypatch, list(config.SURICATA_ALIGNED_FEATURES))
+    with pytest.raises(ValueError, match="model expects"):
+        _check_feature_alignment(ModelWithRecordedFeatures(["wrong", "order"]))

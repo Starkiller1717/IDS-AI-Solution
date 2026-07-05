@@ -118,3 +118,91 @@ def test_process_live_event_does_not_persist_non_alert(tmp_path, monkeypatch):
 
     assert incident is None
     assert not output_path.exists()
+
+
+def test_build_incident_includes_correlated_signature():
+    incident = build_incident(
+        FLOW_EVENT,
+        ALERT_PREDICTION,
+        suricata_signature="ET SCAN Potential Nmap port scan",
+    )
+
+    assert incident["suricata_signature"] == "ET SCAN Potential Nmap port scan"
+    assert "ET SCAN Potential Nmap port scan" in incident["report"]
+
+
+def test_process_live_event_threads_signature_into_incident(tmp_path, monkeypatch):
+    output_path = tmp_path / "incidents.jsonl"
+    monkeypatch.setattr(
+        "src.detector.predict.predict",
+        lambda features: ALERT_PREDICTION.copy(),
+    )
+
+    incident = process_live_event(
+        FLOW_EVENT, output_path, suricata_signature="ET SCAN Test Signature"
+    )
+
+    assert incident["suricata_signature"] == "ET SCAN Test Signature"
+    assert "ET SCAN Test Signature" in incident["report"]
+
+
+def test_score_eve_file_correlates_signatures_and_survives_bad_lines(
+    tmp_path, monkeypatch, capsys
+):
+    from src.detector import suricata_reader
+
+    eve_path = tmp_path / "eve.json"
+    eve_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "event_type": "flow",
+                        "flow_id": 111,
+                        "src_ip": "10.0.0.66",
+                        "dest_ip": "10.0.0.1",
+                        "dest_port": 80,
+                        "proto": "TCP",
+                        "flow": {"pkts_toserver": 2, "pkts_toclient": 1},
+                    }
+                ),
+                json.dumps(
+                    {
+                        "event_type": "alert",
+                        "flow_id": 111,
+                        "alert": {"signature": "ET SCAN Test Signature"},
+                    }
+                ),
+                json.dumps(
+                    {
+                        "event_type": "flow",
+                        "flow_id": 222,
+                        "src_ip": "10.0.0.9",
+                        "dest_ip": "10.0.0.1",
+                        "dest_port": 443,
+                        "proto": "TCP",
+                        "flow": {"pkts_toserver": 1, "pkts_toclient": 0},
+                    }
+                ),
+                "{ this is not valid json",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        "src.detector.predict.predict_batch",
+        lambda features_list: [ALERT_PREDICTION.copy() for _ in features_list],
+    )
+
+    suricata_reader.score_eve_file(eve_path)
+    out = capsys.readouterr().out
+
+    # flow 111 has a matching alert (order-independent); flow 222 does not.
+    assert "ET SCAN Test Signature" in out
+    assert "none reported for this flow" in out
+    # One signature collected, one malformed JSON line skipped, both flows scored.
+    assert "1 Suricata alert signatures collected" in out
+    assert "1 malformed lines skipped" in out
+    assert "2 flows scored, 2 crossed the threshold" in out

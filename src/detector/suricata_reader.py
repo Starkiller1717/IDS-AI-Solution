@@ -30,6 +30,19 @@ from src.reporting.incident_writer import DEFAULT_INCIDENTS_PATH, append_inciden
 from src.reporting.incidents import build_incident
 
 
+def _num(value) -> float:
+    """
+    Coerce a Suricata counter to a float. Missing, null, or non-numeric values
+    become 0.0, so one malformed field cannot crash live scoring.
+    """
+    if value is None:
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def flow_to_features(flow_event: dict) -> dict:
     """
     Map ONE Suricata 'flow' EVE event to the model's feature dict.
@@ -38,13 +51,18 @@ def flow_to_features(flow_event: dict) -> dict:
     Suricata exposes packet/byte counts per direction and flow timestamps; we
     derive the CICIDS2017-style features from those. If you add/remove a feature
     in config.SURICATA_ALIGNED_FEATURES, update this mapping to match.
-    """
-    flow = flow_event.get("flow", {})
 
-    pkts_to_server = flow.get("pkts_toserver", 0)   # client -> server  = "forward"
-    pkts_to_client = flow.get("pkts_toclient", 0)   # server -> client  = "backward"
-    bytes_to_server = flow.get("bytes_toserver", 0)
-    bytes_to_client = flow.get("bytes_toclient", 0)
+    Every counter goes through _num(), so a malformed flow (null/string counters,
+    or a missing/non-object `flow`) scores as zeros instead of raising.
+    """
+    flow = flow_event.get("flow")
+    if not isinstance(flow, dict):
+        flow = {}
+
+    pkts_to_server = _num(flow.get("pkts_toserver"))   # client -> server  = "forward"
+    pkts_to_client = _num(flow.get("pkts_toclient"))   # server -> client  = "backward"
+    bytes_to_server = _num(flow.get("bytes_toserver"))
+    bytes_to_client = _num(flow.get("bytes_toclient"))
 
     # Flow duration in microseconds (CICIDS2017's unit), from the flow timestamps.
     duration_us = _duration_microseconds(flow.get("start"), flow.get("end"))
@@ -54,7 +72,7 @@ def flow_to_features(flow_event: dict) -> dict:
     total_pkts = pkts_to_server + pkts_to_client
 
     return {
-        "Destination Port": flow_event.get("dest_port", 0),
+        "Destination Port": _num(flow_event.get("dest_port")),
         "Flow Duration": duration_us,
         "Total Fwd Packets": pkts_to_server,
         "Total Backward Packets": pkts_to_client,
@@ -76,8 +94,17 @@ def _duration_microseconds(start: str | None, end: str | None) -> float:
         t0 = datetime.strptime(start, fmt)
         t1 = datetime.strptime(end, fmt)
         return max((t1 - t0).total_seconds() * 1_000_000, 0.0)
-    except ValueError:
+    except (ValueError, TypeError):
+        # Unparseable or non-string timestamps -> treat as zero duration.
         return 0.0
+
+
+def extract_signature(event: dict) -> str | None:
+    """Return the Suricata alert signature from an 'alert' EVE event, or None."""
+    alert = event.get("alert")
+    if not isinstance(alert, dict):
+        return None
+    return alert.get("signature") or None
 
 
 def handle_flow(flow_event: dict) -> dict | None:
@@ -105,13 +132,16 @@ def handle_flow(flow_event: dict) -> dict | None:
 def process_live_event(
     flow_event: dict,
     incidents_path: str | Path = DEFAULT_INCIDENTS_PATH,
+    suricata_signature: str | None = None,
 ) -> dict | None:
     """Score one live event and persist it when it becomes an incident."""
     prediction = handle_flow(flow_event)
     if prediction is None:
         return None
 
-    incident = build_incident(flow_event, prediction)
+    incident = build_incident(
+        flow_event, prediction, suricata_signature=suricata_signature
+    )
     if incident is None:
         return None
 
@@ -122,6 +152,10 @@ def process_live_event(
 def tail_eve(eve_path: Path) -> None:
     """Follow a Suricata EVE file and persist new high-priority incidents."""
     print(f"Tailing {eve_path} ... (Ctrl+C to stop)")
+    # Suricata usually emits an alert (mid-flow) before the flow record (at flow end),
+    # so remember signatures keyed by flow_id as alerts arrive and attach them when the
+    # matching flow closes. (Bounded cleanup could be added for very long captures.)
+    signatures_by_flow_id: dict = {}
     with eve_path.open("r", encoding="utf-8") as f:
         f.seek(0, 2)  # jump to end so we only read NEW lines
         while True:
@@ -133,7 +167,21 @@ def tail_eve(eve_path: Path) -> None:
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            incident = process_live_event(event)
+
+            if event.get("event_type") == "alert":
+                signature = extract_signature(event)
+                flow_id = event.get("flow_id")
+                if signature and flow_id is not None:
+                    signatures_by_flow_id[flow_id] = signature
+                continue
+
+            try:
+                signature = signatures_by_flow_id.get(event.get("flow_id"))
+                incident = process_live_event(event, suricata_signature=signature)
+            except Exception as exc:  # one malformed event must never stop the tail
+                print(f"[skip] could not process event: {exc}")
+                continue
+
             if incident is not None:
                 alert_info = {
                     key: value
@@ -185,6 +233,7 @@ def score_eve_file(eve_path: Path) -> None:
     print(f"Loading {eve_path}...")
     flow_events = []
     features_list = []
+    signatures_by_flow_id: dict = {}
     skipped = 0
     with eve_path.open("r", encoding="utf-8") as f:
         for line in f:
@@ -196,12 +245,30 @@ def score_eve_file(eve_path: Path) -> None:
             except json.JSONDecodeError:
                 skipped += 1
                 continue
-            if event.get("event_type") != "flow":
+
+            event_type = event.get("event_type")
+            if event_type == "alert":
+                signature = extract_signature(event)
+                flow_id = event.get("flow_id")
+                if signature and flow_id is not None:
+                    signatures_by_flow_id.setdefault(flow_id, signature)
+                continue
+            if event_type != "flow":
+                continue
+
+            try:
+                features = flow_to_features(event)
+            except Exception:  # malformed flow object/counters -> skip, don't abort
+                skipped += 1
                 continue
             flow_events.append(event)
-            features_list.append(flow_to_features(event))
+            features_list.append(features)
 
-    print(f"Loaded {len(flow_events):,} flow events ({skipped} malformed lines skipped).")
+    print(
+        f"Loaded {len(flow_events):,} flow events "
+        f"({len(signatures_by_flow_id):,} Suricata alert signatures collected, "
+        f"{skipped} malformed lines skipped)."
+    )
     if not flow_events:
         print("No flow events found — nothing to score.")
         return
@@ -211,7 +278,8 @@ def score_eve_file(eve_path: Path) -> None:
 
     triggered_count = 0
     for event, result in zip(flow_events, results):
-        incident = build_incident(event, result)
+        signature = signatures_by_flow_id.get(event.get("flow_id"))
+        incident = build_incident(event, result, suricata_signature=signature)
         if incident is None:
             continue
 

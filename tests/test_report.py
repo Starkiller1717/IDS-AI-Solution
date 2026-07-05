@@ -23,6 +23,17 @@ def test_template_report_includes_key_facts():
     assert "Source MAC address: 08:00:27:ab:cd:ef" in report
 
 
+def test_report_states_suricata_signature_status():
+    with_sig = generate_report(
+        {"score": 97, "suricata_signature": "ET SCAN Potential Nmap port scan"},
+        backend="template",
+    )
+    assert "Associated Suricata signature: ET SCAN Potential Nmap port scan" in with_sig
+
+    without_sig = generate_report({"score": 97}, backend="template")
+    assert "none reported for this flow" in without_sig
+
+
 def test_report_handles_missing_fields_gracefully():
     # Even with an almost-empty event, it should not crash.
     report = generate_report({"score": 80}, backend="template")

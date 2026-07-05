@@ -6,7 +6,8 @@ THE CONTRACT (freeze this early — Willow's dashboard depends on it):
     generate_report(event: dict) -> str
 
 `event` is expected to contain (missing keys degrade gracefully):
-    timestamp, attacker_ip, attacker_mac, attack_type, score, dest_port, proto
+    timestamp, attacker_ip, attacker_mac, attack_type, score, dest_port, proto,
+    suricata_signature
 
 BACKENDS
 --------
@@ -47,12 +48,17 @@ def _template_report(event: dict) -> str:
     when = event.get("timestamp", "an unknown time")
     port = event.get("dest_port")
     proto = event.get("proto")
+    signature = event.get("suricata_signature")
 
     observed_details = [
         f"- Source IP address: {ip}",
         f"- Reported activity: {attack_type}",
         f"- Model risk score: {score} out of 100",
     ]
+    if signature:
+        observed_details.append(f"- Associated Suricata signature: {signature}")
+    else:
+        observed_details.append("- Associated Suricata signature: none reported for this flow")
     if mac:
         observed_details.append(f"- Source MAC address: {mac}")
     if port is not None:

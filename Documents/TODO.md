@@ -48,6 +48,8 @@ you go. Things already built by the scaffold are checked. Order matters top-to-b
       → shared `build_incident()` now serves demo, live, and one-shot modes.
 - [x] Write live high-priority incidents to the documented JSON Lines fallback
       (`output/incidents.jsonl`)
+- [x] Correlate Suricata `alert` signatures to flows by `flow_id` so the matched
+      signature appears in incident reports (2026-07-04)
 - [ ] Agree with **Willow** on whether to keep that schema or adapt it to her
       database/API contract
 - [ ] End-to-end: Daniel's Attacker VM runs an Nmap scan → confirm it scores ≥ 95

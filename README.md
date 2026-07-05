@@ -21,17 +21,23 @@ dashboard. Nothing here touches the project Word documents.
 
 - Local Git repository initialized at the Senior Project root; baseline commit:
   `25a12b1`.
-- Model classification threshold: 50.
-- High-priority alert threshold: 95.
+- Model classification threshold: 50. High-priority alert threshold: 95. Both are
+  compared against the raw model probability; the 0–100 score is a rounded display
+  value only.
 - Template report corrected to require human review and state that no automatic
   blocking or lockdown occurred.
+- Suricata `alert` events are correlated to flows by `flow_id`; a matched signature
+  is shown in the incident report (or "none reported for this flow").
+- A feature-drift guard checks `config` against `models/feature_columns.json` and the
+  model's recorded feature order when the model loads.
+- Live tailing skips malformed events instead of crashing on them.
 - Standalone JSON Lines incident writer implemented at
   `src/reporting/incident_writer.py`; it safely appends UTF-8 records and creates
   missing parent directories.
 - Shared incident construction now produces the same schema and template report
   in demo, live, and one-shot modes.
 - Live mode appends high-priority incidents to `output/incidents.jsonl`.
-- Test suite: **21 passed**.
+- Test suite: **34 passed**.
 - Standalone detector-to-report demo: working.
 - Still pending: shared GitHub remote, live Daniel/Suricata integration,
   Willow's dashboard contract, and controlled live-attack validation.
@@ -60,9 +66,14 @@ Your only "contract" with the rest of the system:
 # from inside senior-ai/
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1        # Windows PowerShell
-pip install -r requirements.txt
+# Reproducible install — the exact versions that trained and validated the model:
+pip install -r requirements-lock.txt
 ```
 (On Mac/Linux the activate line is `source .venv/bin/activate`.)
+
+> Use `requirements-lock.txt` for a clean-environment install so teammates get the
+> same pinned versions the model was built against. `requirements.txt` holds only the
+> loose `>=` floors and is a fallback if you deliberately need newer packages.
 
 ---
 
@@ -133,9 +144,11 @@ change it, update the mapping in `suricata_reader.py:flow_to_features` to match.
 - Switching to the Claude API later is a third backend with the same signature.
 
 `src/reporting/incidents.py` builds the shared structured incident and template
-report. In live mode, `src/reporting/incident_writer.py` appends that incident as
-one UTF-8 JSON object in `output/incidents.jsonl`. Demo and one-shot modes use the
-same builder but intentionally do not write output files.
+report, including any Suricata signature correlated to the flow by `flow_id` (the
+report names it, or notes that none was reported). In live mode,
+`src/reporting/incident_writer.py` appends that incident as one UTF-8 JSON object in
+`output/incidents.jsonl`. Demo and one-shot modes use the same builder but
+intentionally do not write output files.
 
 ---
 

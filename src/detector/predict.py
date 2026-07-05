@@ -14,6 +14,7 @@ notification code only ever needs this dict.
 from __future__ import annotations
 
 import functools
+import json
 
 import pandas as pd
 
@@ -30,7 +31,63 @@ def _load_model():
             f"No trained model at {config.MODEL_PATH}. "
             "Run `python -m src.detector.train` first."
         )
-    return joblib.load(config.MODEL_PATH)
+    model = joblib.load(config.MODEL_PATH)
+    _check_feature_alignment(model)
+    return model
+
+
+def _check_feature_alignment(model) -> None:
+    """
+    Fail loudly on train/inference feature drift.
+
+    config.SURICATA_ALIGNED_FEATURES is the single source of truth. If the saved
+    models/feature_columns.json artifact (the one handed to Daniel to deploy) or the
+    model's own recorded feature order disagrees with it, we would silently score
+    against a mismatched feature vector. Raise instead so drift is caught immediately
+    rather than producing quietly wrong predictions.
+    """
+    expected = list(config.SURICATA_ALIGNED_FEATURES)
+
+    if config.FEATURE_COLUMNS_PATH.exists():
+        saved = json.loads(config.FEATURE_COLUMNS_PATH.read_text(encoding="utf-8"))
+        if saved != expected:
+            raise ValueError(
+                "Feature drift: models/feature_columns.json does not match "
+                "config.SURICATA_ALIGNED_FEATURES.\n"
+                f"  artifact: {saved}\n"
+                f"  config:   {expected}\n"
+                "Retrain with `python -m src.detector.train` so they agree."
+            )
+
+    recorded = getattr(model, "feature_names_in_", None)
+    if recorded is not None and list(recorded) != expected:
+        raise ValueError(
+            "Feature drift: the trained model expects a different feature order "
+            "than config.SURICATA_ALIGNED_FEATURES.\n"
+            f"  model:  {list(recorded)}\n"
+            f"  config: {expected}\n"
+            "Retrain with `python -m src.detector.train` so they agree."
+        )
+
+
+def _result_from_percent(attack_percent: float) -> dict:
+    """
+    Turn an attack probability (expressed as a 0-100 percentage) into the result
+    contract.
+
+    The classification and alert DECISIONS compare the raw, unrounded percentage, so
+    runtime matches the held-out metrics (measured at probability >= 0.50 and >= 0.95,
+    not on a rounded integer). `score` is a rounded display value only, so a borderline
+    flow can read e.g. 95 while sitting just under the alert threshold. Shared by
+    predict() and predict_batch() so the two can never diverge.
+    """
+    return {
+        "classification": (
+            "attack" if attack_percent >= config.CLASSIFICATION_THRESHOLD else "normal"
+        ),
+        "score": int(round(attack_percent)),
+        "is_alert_triggered": attack_percent >= config.ALERT_THRESHOLD,
+    }
 
 
 def predict(features: dict) -> dict:
@@ -52,17 +109,10 @@ def predict(features: dict) -> dict:
         columns=config.SURICATA_ALIGNED_FEATURES,
     )
 
-    # predict_proba gives P(attack); scale it to the project's 0-100 score.
-    attack_probability = model.predict_proba(row)[0][1]
-    score = int(round(attack_probability * 100))
-
-    return {
-        "classification": (
-            "attack" if score >= config.CLASSIFICATION_THRESHOLD else "normal"
-        ),
-        "score": score,
-        "is_alert_triggered": score >= config.ALERT_THRESHOLD,
-    }
+    # predict_proba gives P(attack); express it as a 0-100 percentage. The decisions
+    # in _result_from_percent use this raw value; only the reported score is rounded.
+    attack_percent = float(model.predict_proba(row)[0][1]) * 100.0
+    return _result_from_percent(attack_percent)
 
 
 def predict_batch(features_list: list[dict]) -> list[dict]:
@@ -90,16 +140,7 @@ def predict_batch(features_list: list[dict]) -> list[dict]:
     matrix = pd.DataFrame(rows, columns=config.SURICATA_ALIGNED_FEATURES)
 
     probabilities = model.predict_proba(matrix)[:, 1]
-    scores = [int(round(p * 100)) for p in probabilities]
-
-    return [
-        {
-            "classification": "attack" if s >= config.CLASSIFICATION_THRESHOLD else "normal",
-            "score": s,
-            "is_alert_triggered": s >= config.ALERT_THRESHOLD,
-        }
-        for s in scores
-    ]
+    return [_result_from_percent(float(p) * 100.0) for p in probabilities]
 
 
 if __name__ == "__main__":

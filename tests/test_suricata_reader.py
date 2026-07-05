@@ -6,7 +6,7 @@ which is the part most likely to silently break during integration.
 """
 
 from src import config
-from src.detector.suricata_reader import flow_to_features
+from src.detector.suricata_reader import extract_signature, flow_to_features
 
 # A made-up "port scan"-style flow: one tiny packet out, nothing back.
 SCAN_FLOW = {
@@ -48,3 +48,49 @@ def test_zero_duration_does_not_divide_by_zero():
     feats = flow_to_features(flow)  # start/end missing -> duration 0
     assert feats["Flow Bytes/s"] == 0.0
     assert feats["Flow Packets/s"] == 0.0
+
+
+def test_null_and_string_counters_do_not_crash():
+    # A malformed flow with null / string / bad counters must score as zeros,
+    # not raise, so one bad event can't terminate live processing.
+    flow = {
+        "event_type": "flow",
+        "dest_port": None,
+        "flow": {
+            "pkts_toserver": None,
+            "pkts_toclient": "oops",
+            "bytes_toserver": None,
+            "bytes_toclient": 40,
+            "start": 12345,          # non-string timestamp
+            "end": None,
+        },
+    }
+    feats = flow_to_features(flow)
+    for name in config.SURICATA_ALIGNED_FEATURES:
+        assert name in feats
+    assert feats["Destination Port"] == 0.0
+    assert feats["Total Fwd Packets"] == 0.0
+    assert feats["Total Backward Packets"] == 0.0
+    assert feats["Total Length of Bwd Packets"] == 40.0
+    assert feats["Flow Duration"] == 0.0
+
+
+def test_non_dict_flow_object_does_not_crash():
+    for broken in ({"event_type": "flow", "flow": None},
+                   {"event_type": "flow", "flow": "not-an-object"},
+                   {"event_type": "flow"}):
+        feats = flow_to_features(broken)
+        assert feats["Total Fwd Packets"] == 0.0
+        assert feats["Flow Bytes/s"] == 0.0
+
+
+def test_extract_signature_reads_alert_events_only():
+    alert = {
+        "event_type": "alert",
+        "alert": {"signature": "ET SCAN Potential Nmap port scan"},
+    }
+    assert extract_signature(alert) == "ET SCAN Potential Nmap port scan"
+    # Flow events, missing/empty alert objects -> no signature.
+    assert extract_signature({"event_type": "flow"}) is None
+    assert extract_signature({"alert": None}) is None
+    assert extract_signature({"alert": {}}) is None
