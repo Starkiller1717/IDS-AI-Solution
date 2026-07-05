@@ -45,11 +45,11 @@ you go. Things already built by the scaffold are checked. Order matters top-to-b
       (note: use `--eve-once` for a finished file, not `--eve` — that flag is for
       tailing a live, growing file and added 2026-06-25 specifically for this gap)
 - [x] Wire the detector to the reporter so a flagged attack actually produces a report
-      → done via `demo.py` (`python demo.py`) — proves `handle_flow()` → `generate_report()`
-      end-to-end. Still **not** promoted into `tail_eve()` itself (next item).
-- [ ] Agree with **Willow** on where scored attacks get written (DB table / JSON shape)
-      and replace the `print()` in `tail_eve()` with that write (and promote the
-      `demo.py` report-generation wiring into `tail_eve()` at the same time)
+      → shared `build_incident()` now serves demo, live, and one-shot modes.
+- [x] Write live high-priority incidents to the documented JSON Lines fallback
+      (`output/incidents.jsonl`)
+- [ ] Agree with **Willow** on whether to keep that schema or adapt it to her
+      database/API contract
 - [ ] End-to-end: Daniel's Attacker VM runs an Nmap scan → confirm it scores ≥ 95
       (threshold raised from 70 on 2026-06-25 per professor feedback)
 
@@ -63,9 +63,8 @@ you go. Things already built by the scaffold are checked. Order matters top-to-b
       an optional future enhancement
 - [ ] (Optional) Install Ollama app, `ollama pull llama3.1:8b`, uncomment `ollama` in
       `requirements.txt`, call `generate_report(event, backend="ollama")`
-- [ ] Promote report generation into the live `tail_eve()` path
-- [ ] Pass the resulting structured live incident to `append_incident()` or
-      Willow's agreed dashboard sink
+- [x] Promote report generation into the live `tail_eve()` path
+- [x] Pass the resulting structured live incident to `append_incident()`
 
 ## Part D — Validate & document (Sprint 4)
 - [x] Validate false positives against the held-out dataset: 0.41% at the model

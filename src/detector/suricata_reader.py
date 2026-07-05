@@ -26,6 +26,8 @@ from datetime import datetime
 from pathlib import Path
 
 from src import config
+from src.reporting.incident_writer import DEFAULT_INCIDENTS_PATH, append_incident
+from src.reporting.incidents import build_incident
 
 
 def flow_to_features(flow_event: dict) -> dict:
@@ -100,11 +102,25 @@ def handle_flow(flow_event: dict) -> dict | None:
     return result
 
 
+def process_live_event(
+    flow_event: dict,
+    incidents_path: str | Path = DEFAULT_INCIDENTS_PATH,
+) -> dict | None:
+    """Score one live event and persist it when it becomes an incident."""
+    prediction = handle_flow(flow_event)
+    if prediction is None:
+        return None
+
+    incident = build_incident(flow_event, prediction)
+    if incident is None:
+        return None
+
+    append_incident(incident, incidents_path)
+    return incident
+
+
 def tail_eve(eve_path: Path) -> None:
-    """
-    Follow a Suricata eve.json file and score new flow events as they arrive.
-    (In the real system, replace the print() with a DB insert for attacks.)
-    """
+    """Follow a Suricata EVE file and persist new high-priority incidents."""
     print(f"Tailing {eve_path} ... (Ctrl+C to stop)")
     with eve_path.open("r", encoding="utf-8") as f:
         f.seek(0, 2)  # jump to end so we only read NEW lines
@@ -117,9 +133,16 @@ def tail_eve(eve_path: Path) -> None:
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            result = handle_flow(event)
-            if result and result["is_alert_triggered"]:
-                print(f"[ALERT score={result['score']}] {result}")
+            incident = process_live_event(event)
+            if incident is not None:
+                alert_info = {
+                    key: value
+                    for key, value in incident.items()
+                    if key != "report"
+                }
+                print(f"[ALERT score={incident['ml_score']}] {alert_info}")
+                print(incident["report"])
+                print(f"[incident] appended to {DEFAULT_INCIDENTS_PATH}")
 
 
 def run_demo() -> None:
@@ -158,7 +181,6 @@ def score_eve_file(eve_path: Path) -> None:
     (batch prediction) instead of once per flow. Much faster for large captures.
     """
     from src.detector.predict import predict_batch
-    from src.reporting.report import generate_report
 
     print(f"Loading {eve_path}...")
     flow_events = []
@@ -189,29 +211,18 @@ def score_eve_file(eve_path: Path) -> None:
 
     triggered_count = 0
     for event, result in zip(flow_events, results):
-        if result["is_alert_triggered"]:
-            triggered_count += 1
-            alert_info = {
-                "timestamp": event.get("timestamp"),
-                "attacker_ip": event.get("src_ip"),
-                "dest_ip": event.get("dest_ip"),
-                "dest_port": event.get("dest_port"),
-                "proto": event.get("proto"),
-                **result,
-            }
-            print(f"[ALERT score={result['score']}] {alert_info}")
-            report = generate_report(
-                {
-                    "timestamp": event.get("timestamp"),
-                    "attacker_ip": event.get("src_ip"),
-                    "attack_type": "suspicious flow",
-                    "score": result["score"],
-                    "dest_port": event.get("dest_port"),
-                    "proto": event.get("proto"),
-                },
-                backend="template",
-            )
-            print(report)
+        incident = build_incident(event, result)
+        if incident is None:
+            continue
+
+        triggered_count += 1
+        alert_info = {
+            key: value
+            for key, value in incident.items()
+            if key != "report"
+        }
+        print(f"[ALERT score={incident['ml_score']}] {alert_info}")
+        print(incident["report"])
 
     print(f"\nDone. {len(flow_events):,} flows scored, {triggered_count} crossed the threshold.")
 

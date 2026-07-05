@@ -137,21 +137,21 @@ VM are the only way to get a real, known-ground-truth signal.
   a separate host reading a synced/shared `eve.json`? (Recommendation above:
   start on the Router VM, it's the path of least friction.)
 - Willow's dashboard contract (DB schema, file, or API) is still needed for the
-  final handoff. A standalone JSON Lines fallback writer now exists, but
-  `tail_eve()` does not call it yet. Tracked in `PROGRESS.md` / `TODO.md`.
+  final handoff. Live mode now writes the documented JSON Lines fallback while
+  that contract is pending. Tracked in `PROGRESS.md` / `TODO.md`.
 
 ## 6. Status
 
 **Updated July 4, 2026:**
 
 - Madison's local model, feature mapping, classification/alert thresholds,
-  standalone report demo, JSON Lines incident writer, and 16-test suite are
+  shared incident pipeline, live JSON Lines fallback, and 21-test suite are
   working.
 - Local Git exists at the Senior Project root with baseline commit `25a12b1`.
 - Automatic network lockdown is explicitly out of scope; alerts require human
   review.
-- Live `tail_eve()` report/writer integration and the dashboard handoff are not
-  built.
+- Live `tail_eve()` report/writer integration is built; the dashboard handoff is
+  not.
 - No shared GitHub remote exists yet.
 - Teammate artifacts have not been received in this workspace.
 

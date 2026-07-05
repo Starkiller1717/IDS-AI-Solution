@@ -28,11 +28,13 @@ dashboard. Nothing here touches the project Word documents.
 - Standalone JSON Lines incident writer implemented at
   `src/reporting/incident_writer.py`; it safely appends UTF-8 records and creates
   missing parent directories.
-- Test suite: **16 passed**.
+- Shared incident construction now produces the same schema and template report
+  in demo, live, and one-shot modes.
+- Live mode appends high-priority incidents to `output/incidents.jsonl`.
+- Test suite: **21 passed**.
 - Standalone detector-to-report demo: working.
 - Still pending: shared GitHub remote, live Daniel/Suricata integration,
-  connecting the incident writer to live processing, and Willow's dashboard
-  contract.
+  Willow's dashboard contract, and controlled live-attack validation.
 - The trained model remains local and is intentionally excluded from regular Git
   because it is approximately 110 MB.
 
@@ -130,10 +132,10 @@ change it, update the mapping in `suricata_reader.py:flow_to_features` to match.
   `backend="ollama"`. If Ollama isn't running it automatically falls back to the template.
 - Switching to the Claude API later is a third backend with the same signature.
 
-`src/reporting/incident_writer.py` provides the persistence fallback separately:
-`append_incident(incident)` appends one UTF-8 JSON object to
-`output/incidents.jsonl`. It is tested but is not yet called by live mode, the
-demo, or report generation.
+`src/reporting/incidents.py` builds the shared structured incident and template
+report. In live mode, `src/reporting/incident_writer.py` appends that incident as
+one UTF-8 JSON object in `output/incidents.jsonl`. Demo and one-shot modes use the
+same builder but intentionally do not write output files.
 
 ---
 
@@ -148,6 +150,6 @@ senior-ai/
 ├─ src/
 │  ├─ config.py         ← paths + the shared feature list (the important one)
 │  ├─ detector/         ← train.py, predict.py, suricata_reader.py
-│  └─ reporting/        ← report.py, prompts.py, incident_writer.py
+│  └─ reporting/        ← incidents.py, incident_writer.py, report.py, prompts.py
 └─ tests/               ← run with `pytest`
 ```

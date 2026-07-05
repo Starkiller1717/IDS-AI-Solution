@@ -10,9 +10,9 @@ Cybersecurity threat detection system for a multi-VM lab network. This component
 Senior Project root. Classification begins at score 50; high-priority alerting
 begins at 95. Template report wording has been corrected to require human review
 and state that no automatic blocking occurred. A standalone JSON Lines incident
-writer exists and is covered by tests. The test suite has 16 passing tests.
-Shared GitHub, wiring the writer into live processing, Daniel integration, and
-Willow integration remain pending.
+writer and shared post-scoring incident builder are connected to live mode. The
+test suite has 21 passing tests. Shared GitHub, Daniel integration, Willow's
+dashboard contract, and controlled live-attack validation remain pending.
 
 ## Commands
 
@@ -57,7 +57,8 @@ jupyter notebook                                # open 01_explore.ipynb or 02_tr
 - `detector/train.py` — Loads CICIDS2017 CSVs, trains Random Forest (binary: BENIGN vs ATTACK), saves model to `models/`
 - `detector/predict.py` — Loads trained model, scores a single flow dict, returns `{classification, score, is_alert_triggered}`
 - `detector/suricata_reader.py` — Parses Suricata EVE JSON, maps flow fields → model features via `flow_to_features()`, calls predict. Validated 2026-06-25 against real Suricata 6.0.4 output (offline `suricata -r` run on a downloaded pcap, 54,914 real flow events) — field names matched exactly, no mapping changes needed. Supports `--eve` (live tail) and `--eve-once` (score a finished file once, added 2026-06-25 for offline-mode testing).
-- `reporting/incident_writer.py` — Standalone append-only UTF-8 JSON Lines persistence; defaults to `output/incidents.jsonl`. It is not connected to live processing yet.
+- `reporting/incidents.py` — Builds one versioned incident schema and template report after scoring; shared by demo, live, and one-shot modes.
+- `reporting/incident_writer.py` — Append-only UTF-8 JSON Lines persistence; live mode writes high-priority incidents to `output/incidents.jsonl`.
 - `reporting/report.py` — Generates incident reports; template backend works offline, optional Ollama backend for higher quality
 - `reporting/prompts.py` — System/user prompt templates for the Ollama LLM backend
 - `config.py` — **Single source of truth** for everything shared: feature list, file paths, classification threshold (50), high-priority alert threshold (95), and benign label
@@ -70,7 +71,8 @@ Attacker VM → Router VM (Suricata/Daniel) → eve.json
   → suricata_reader.py (flow_to_features)
     → predict.py (score 0–100, classify at 50, alert at 95)
       → report.py (incident text)
-        → incident_writer.py (standalone fallback; live wiring pending)
+        → incidents.py (shared structured incident)
+          → incident_writer.py (live JSON Lines fallback)
           → Willow's dashboard/database
 ```
 
@@ -82,8 +84,10 @@ high-priority alert. No automatic blocking or network lockdown is performed.
 
 ## Key Files
 
-- `demo.py` — Wires `suricata_reader.handle_flow()` → `report.generate_report()` so the full pipeline runs end-to-end in one command. This connection does not exist in `tail_eve()` itself yet (it only `print()`s); `demo.py` is the one place in the repo that proves the detector and reporter work together.
+- `demo.py` — Exercises the shared flow → prediction → incident → report path
+  without writing repository output files
 - `src/config.py` — Change features, thresholds, or paths here; everything else picks them up
+- `src/reporting/incidents.py` — Builds the common post-scoring incident payload
 - `src/reporting/incident_writer.py` — Appends one JSON-serializable incident per
   line without overwriting existing records
 - `data/sample_eve.json` — 4 sample Suricata events for demos and tests (not training data)
@@ -102,6 +106,8 @@ Tests in `tests/` require no trained model or dataset:
   high-priority alerting starts at 95
 - `test_incident_writer.py` — validates parent-directory creation, append
   behavior, and valid JSON Lines with Unicode and embedded newlines
+- `test_incident_pipeline.py` — validates shared incident construction,
+  template-report inclusion, missing optional fields, and live persistence
 
 ## Dependencies
 

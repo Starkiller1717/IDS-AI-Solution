@@ -3,11 +3,9 @@ End-to-end capstone demo: Suricata-style flow -> features -> score -> incident r
 
 WHY THIS FILE EXISTS
 ---------------------
-`suricata_reader.tail_eve()` calls predict() but never calls generate_report() —
-the detector and the incident-report generator are two correct, independently
-tested modules that are not wired together anywhere in the live code path. This
-script is that missing wire-up, so there is one command that shows the whole
-pipeline working end-to-end without Suricata, Daniel's VM, or Willow's dashboard.
+The detector, incident builder, and report generator share the same processing
+path used by live and one-shot modes. This script exercises that path without
+Suricata, Daniel's VM, or Willow's dashboard.
 
 The bundled `data/sample_eve.json` flows are deliberately mild and never cross
 the high-priority alert threshold against the real trained model (see
@@ -26,7 +24,7 @@ import json
 
 from src import config
 from src.detector.suricata_reader import flow_to_features, handle_flow
-from src.reporting.report import generate_report
+from src.reporting.incidents import build_incident
 
 # A flow shaped after a real CICIDS2017 PortScan attack row (dest_port 80, 2 tiny
 # forward packets, 1 tiny backward packet, ~738us duration). Verified separately
@@ -84,21 +82,13 @@ def main() -> None:
         print(f"  features -> {feats}")
         print(f"  prediction -> {result}")
 
-        if result["is_alert_triggered"]:
-            triggered_count += 1
-            report = generate_report(
-                {
-                    "timestamp": result["timestamp"],
-                    "attacker_ip": result["attacker_ip"],
-                    "attack_type": "suspicious flow",
-                    "score": result["score"],
-                    "dest_port": result["dest_port"],
-                    "proto": result["proto"],
-                },
-                backend="template",
-            )
-            print("  ALERT -> incident report generated:\n")
-            print(report)
+        incident = build_incident(flow_event, result)
+        if incident is None:
+            continue
+
+        triggered_count += 1
+        print("  ALERT -> incident report generated:\n")
+        print(incident["report"])
 
     print("=" * 70)
     print(

@@ -19,10 +19,10 @@ Network traffic → Suricata (produces flow records) → THIS COMPONENT → scor
 ```
 
 **Current status (July 4, 2026):** The trained model, standalone demo, template
-report, standalone JSON Lines incident writer, and 16 automated tests work.
-Classification uses score 50 and high-priority alerting uses score 95. Local Git
-baseline `25a12b1` exists. Connecting reports and incident persistence to the live
-tail, shared GitHub, and teammate integrations are not complete.
+report, shared incident pipeline, live JSON Lines persistence, and 21 automated
+tests work. Classification uses score 50 and high-priority alerting uses score 95.
+Local Git baseline `25a12b1` exists. Shared GitHub, Daniel's live environment,
+Willow's dashboard contract, and controlled live-attack validation are not complete.
 
 ---
 
@@ -239,7 +239,13 @@ Incident persistence is handled separately by
 `src/reporting/incident_writer.py`. `append_incident(incident)` creates the
 destination directory when needed and appends exactly one UTF-8 JSON object per
 line to `output/incidents.jsonl`. The writer preserves prior records and returns
-the path it wrote. It is not yet connected to live processing or report generation.
+the path it wrote.
+
+`src/reporting/incidents.py` provides `build_incident(flow_event, prediction)`,
+the shared post-scoring step used by demo, live, and one-shot modes. It returns
+`None` when no high-priority alert was triggered. Otherwise it returns the
+versioned detector-to-dashboard schema with the template report included. Live
+mode persists that record; demo and one-shot modes only display it.
 
 ```python
 from src.reporting.incident_writer import append_incident
@@ -293,6 +299,7 @@ pytest -q
 | `src/detector/train.py` | Offline training on CICIDS2017 |
 | `src/detector/predict.py` | Runtime scoring of a single flow |
 | `src/detector/suricata_reader.py` | Parses `eve.json`, maps fields to model features, calls predict |
+| `src/reporting/incidents.py` | Shared structured incident and template-report construction |
 | `src/reporting/incident_writer.py` | Standalone append-only JSON Lines incident persistence |
 | `src/reporting/report.py` | Incident report generation (template/Ollama backends) |
 | `src/reporting/prompts.py` | Prompt templates for the Ollama report backend |
