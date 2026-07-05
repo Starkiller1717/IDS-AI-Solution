@@ -136,20 +136,22 @@ VM are the only way to get a real, known-ground-truth signal.
 - Where does the AI detector physically run — on the Router VM itself, or on
   a separate host reading a synced/shared `eve.json`? (Recommendation above:
   start on the Router VM, it's the path of least friction.)
-- Willow's dashboard contract (DB schema, file, or API) — blocks turning the
-  `print()` in `tail_eve()` into a real write. Tracked in `PROGRESS.md` /
-  `TODO.md`.
+- Willow's dashboard contract (DB schema, file, or API) is still needed for the
+  final handoff. A standalone JSON Lines fallback writer now exists, but
+  `tail_eve()` does not call it yet. Tracked in `PROGRESS.md` / `TODO.md`.
 
 ## 6. Status
 
 **Updated July 4, 2026:**
 
 - Madison's local model, feature mapping, classification/alert thresholds,
-  standalone report demo, and 10-test suite are working.
+  standalone report demo, JSON Lines incident writer, and 16-test suite are
+  working.
 - Local Git exists at the Senior Project root with baseline commit `25a12b1`.
 - Automatic network lockdown is explicitly out of scope; alerts require human
   review.
-- Live `tail_eve()` report persistence and the dashboard handoff are not built.
+- Live `tail_eve()` report/writer integration and the dashboard handoff are not
+  built.
 - No shared GitHub remote exists yet.
 - Teammate artifacts have not been received in this workspace.
 

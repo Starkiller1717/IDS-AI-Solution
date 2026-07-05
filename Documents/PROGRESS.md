@@ -18,9 +18,10 @@
 | Automatic-response terminology removed from prediction output | Done — output uses `is_alert_triggered` |
 | Template report safety wording corrected | Done — human review required; no external-source, blocking, or lockdown claims |
 | Missing MAC addresses omitted from reports | Done |
-| Full test suite | **10 passed** |
+| Standalone JSON Lines incident writer | Done — appends UTF-8 records, creates parent directories, and preserves prior records |
+| Full test suite | **16 passed** |
 | Shared GitHub remote | Pending |
-| Live report generation and incident persistence | Pending |
+| Live report generation and incident-writer integration | Pending |
 | Daniel live Suricata/GNS3 integration | Pending |
 | Willow dashboard contract | Pending |
 
@@ -37,7 +38,7 @@
 | Trained model saved to `models/detector.joblib` | Done |
 | Live scoring verified: `--demo` prints per-flow scores 0–100 | Done |
 | Template incident report working | Done |
-| Full test suite passing (10 tests) | Done |
+| Full test suite passing (16 tests) | Done |
 
 ### Sprint 2 (in progress, started 2026-06-25)
 
@@ -164,12 +165,16 @@ In live mode (`--eve /path/to/eve.json`), the reader tails the file and scores e
 
 Note: `tail_eve()`/`handle_flow()` call `predict()` but never `generate_report()` — the detector and the incident reporter are not wired together in this live code path yet. `demo.py` (see below) is the one place in the repo where the full pipeline — flow → score → report — runs end-to-end; that wiring still needs to be promoted into `tail_eve()` once a downstream sink (Willow's DB/JSON contract) exists.
 
-#### 4. Incident Reports (`src/reporting/report.py`)
+#### 4. Incident Reports and Persistence (`src/reporting/`)
 
 Generates a plain-language summary of each detected attack, intended for non-technical users.
 
 - **Template backend (default):** fills a pre-written template with the event's IP, score, port, timestamp, and attack type. Zero dependencies, always works.
 - **Ollama backend (optional):** sends the event to a locally-running LLM (e.g. `llama3.1:8b`) for higher-quality prose. Falls back silently to the template if Ollama isn't installed or running.
+- **JSON Lines writer:** `incident_writer.append_incident()` appends one
+  JSON-serializable incident to `output/incidents.jsonl`, creates missing parent
+  directories, and returns the destination path. It is standalone and is not yet
+  called from `tail_eve()`, `demo.py`, or `generate_report()`.
 
 Sample output (template backend):
 
@@ -252,6 +257,7 @@ ai-implementation/
 │   │   ├── predict.py             # Runtime scoring (called per flow)
 │   │   └── suricata_reader.py     # Parses eve.json, calls predict, emits alerts
 │   └── reporting/
+│       ├── incident_writer.py     # Standalone JSON Lines persistence
 │       ├── report.py              # Incident report generation
 │       └── prompts.py             # LLM prompt templates (for Ollama backend)
 ├── models/
@@ -265,7 +271,8 @@ ai-implementation/
 ├── tests/
 │   ├── test_suricata_reader.py    # Unit tests for flow_to_features()
 │   ├── test_report.py             # Unit tests for report generation
-│   └── test_predict.py            # Classification vs. alert threshold tests
+│   ├── test_predict.py            # Prediction and batch-scoring tests
+│   └── test_incident_writer.py    # JSON Lines persistence tests
 └── notebooks/
     ├── 01_explore.ipynb           # Data exploration
     └── 02_train.ipynb             # Interactive training and tuning
@@ -279,7 +286,9 @@ ai-implementation/
    self-sourced (own Suricata install + downloaded pcap) rather than from Daniel —
    exact match, no mapping changes needed. Still want Daniel's actual router VM
    output too, to confirm his specific config matches.
-2. **Agree on output format with Willow** — replace the `print()` in `tail_eve()` with a database write or JSON file that Willow's dashboard can consume. **Still pending.**
+2. **Agree on output format with Willow and wire live processing** — the
+   standalone JSON Lines fallback now exists, but `tail_eve()` still only prints
+   alerts and Willow's dashboard contract is still pending.
 3. **End-to-end test** — Daniel's Attacker VM runs an Nmap scan, it appears on Willow's dashboard with a score and a report. **Still pending** — requires both items above.
 4. ~~**Initialize git version control for this project.**~~ Done July 4 —
    repository initialized at the project root with baseline commit `25a12b1`.

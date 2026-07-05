@@ -57,11 +57,15 @@ you go. Things already built by the scaffold are checked. Order matters top-to-b
 - [x] Template report works today (`python -m src.reporting.report`)
 - [x] Correct template wording: human review, no automatic blocking/lockdown claims,
       and omit missing MAC addresses
+- [x] Add a standalone JSON Lines incident writer with tests for parent-directory
+      creation, append behavior, and valid independently parseable records
 - [x] Decide current report backend: ship the deterministic template; Ollama remains
       an optional future enhancement
 - [ ] (Optional) Install Ollama app, `ollama pull llama3.1:8b`, uncomment `ollama` in
       `requirements.txt`, call `generate_report(event, backend="ollama")`
 - [ ] Promote report generation into the live `tail_eve()` path
+- [ ] Pass the resulting structured live incident to `append_incident()` or
+      Willow's agreed dashboard sink
 
 ## Part D — Validate & document (Sprint 4)
 - [x] Validate false positives against the held-out dataset: 0.41% at the model

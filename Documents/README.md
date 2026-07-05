@@ -19,10 +19,10 @@ Network traffic → Suricata (produces flow records) → THIS COMPONENT → scor
 ```
 
 **Current status (July 4, 2026):** The trained model, standalone demo, template
-report, and 10 automated tests work. Classification uses score 50 and
-high-priority alerting uses score 95. Local Git baseline `25a12b1` exists.
-Live-tail report persistence, shared GitHub, and teammate integrations are not
-complete.
+report, standalone JSON Lines incident writer, and 16 automated tests work.
+Classification uses score 50 and high-priority alerting uses score 95. Local Git
+baseline `25a12b1` exists. Connecting reports and incident persistence to the live
+tail, shared GitHub, and teammate integrations are not complete.
 
 ---
 
@@ -235,6 +235,18 @@ uncomment `ollama` in `requirements.txt` and reinstall, then call
 `generate_report(event, backend="ollama")`. Prompt wording for this backend
 lives in `src/reporting/prompts.py`.
 
+Incident persistence is handled separately by
+`src/reporting/incident_writer.py`. `append_incident(incident)` creates the
+destination directory when needed and appends exactly one UTF-8 JSON object per
+line to `output/incidents.jsonl`. The writer preserves prior records and returns
+the path it wrote. It is not yet connected to live processing or report generation.
+
+```python
+from src.reporting.incident_writer import append_incident
+
+path = append_incident({"score": 97, "report": "Review this incident."})
+```
+
 ---
 
 ## 7. How to Use This Component
@@ -281,6 +293,7 @@ pytest -q
 | `src/detector/train.py` | Offline training on CICIDS2017 |
 | `src/detector/predict.py` | Runtime scoring of a single flow |
 | `src/detector/suricata_reader.py` | Parses `eve.json`, maps fields to model features, calls predict |
+| `src/reporting/incident_writer.py` | Standalone append-only JSON Lines incident persistence |
 | `src/reporting/report.py` | Incident report generation (template/Ollama backends) |
 | `src/reporting/prompts.py` | Prompt templates for the Ollama report backend |
 | `models/detector.joblib` | Trained model artifact (not committed to source control) |
