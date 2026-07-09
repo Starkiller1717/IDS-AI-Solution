@@ -2,13 +2,16 @@
 
 import json
 
-from src.detector.suricata_reader import process_live_event
+import pytest
+
+from src.detector.suricata_reader import _process_eve_line, process_live_event
 from src.reporting.incidents import build_incident
 
 
 FLOW_EVENT = {
     "timestamp": "2026-07-04T12:00:00.000000+0000",
     "event_type": "flow",
+    "flow_id": 111,
     "src_ip": "10.0.0.66",
     "dest_ip": "10.0.0.1",
     "dest_port": 80,
@@ -206,3 +209,105 @@ def test_score_eve_file_correlates_signatures_and_survives_bad_lines(
     assert "1 Suricata alert signatures collected" in out
     assert "1 malformed lines skipped" in out
     assert "2 flows scored, 2 crossed the threshold" in out
+
+
+@pytest.mark.parametrize(
+    "bad_line",
+    ["not json at all", "[]", '"just a string"', "null", "123"],
+)
+def test_process_eve_line_skips_malformed_input(bad_line):
+    # Neither non-JSON text nor validly-JSON-but-non-object records may raise.
+    assert _process_eve_line(bad_line, {}) is None
+
+
+def test_process_eve_line_propagates_model_failures(monkeypatch):
+    def boom(features):
+        raise RuntimeError("model exploded")
+
+    monkeypatch.setattr("src.detector.predict.predict", boom)
+
+    with pytest.raises(RuntimeError, match="model exploded"):
+        _process_eve_line(json.dumps(FLOW_EVENT), {})
+
+
+def test_process_eve_line_propagates_persistence_failures(monkeypatch):
+    monkeypatch.setattr(
+        "src.detector.predict.predict", lambda features: ALERT_PREDICTION.copy()
+    )
+
+    def boom(incident, path):
+        raise OSError("disk full")
+
+    monkeypatch.setattr("src.detector.suricata_reader.append_incident", boom)
+
+    with pytest.raises(OSError, match="disk full"):
+        _process_eve_line(json.dumps(FLOW_EVENT), {})
+
+
+def test_process_eve_line_keeps_first_signature_and_clears_cache_on_flow_close(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "src.detector.predict.predict", lambda features: ALERT_PREDICTION.copy()
+    )
+    cache: dict = {}
+
+    alert_1 = json.dumps(
+        {"event_type": "alert", "flow_id": 111, "alert": {"signature": "first sig"}}
+    )
+    alert_2 = json.dumps(
+        {"event_type": "alert", "flow_id": 111, "alert": {"signature": "second sig"}}
+    )
+
+    assert _process_eve_line(alert_1, cache) is None
+    assert _process_eve_line(alert_2, cache) is None
+    assert cache[111] == "first sig"  # first-signature-wins, matches score_eve_file()
+
+    incident = _process_eve_line(json.dumps(FLOW_EVENT), cache)
+
+    assert incident["suricata_signature"] == "first sig"
+    assert 111 not in cache  # cleared once the terminal flow record is handled
+
+
+def test_live_and_one_shot_modes_agree_on_which_signature_wins(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "src.detector.predict.predict", lambda features: ALERT_PREDICTION.copy()
+    )
+    monkeypatch.setattr(
+        "src.detector.predict.predict_batch",
+        lambda features_list: [ALERT_PREDICTION.copy() for _ in features_list],
+    )
+
+    lines = [
+        json.dumps(
+            {"event_type": "alert", "flow_id": 111, "alert": {"signature": "first sig"}}
+        ),
+        json.dumps(
+            {"event_type": "alert", "flow_id": 111, "alert": {"signature": "second sig"}}
+        ),
+        json.dumps(FLOW_EVENT),
+    ]
+
+    live_cache: dict = {}
+    live_incident = None
+    for line in lines:
+        result = _process_eve_line(line, live_cache)
+        if result is not None:
+            live_incident = result
+
+    assert live_incident["suricata_signature"] == "first sig"
+
+    from src.detector import suricata_reader
+
+    eve_path = tmp_path / "eve.json"
+    eve_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    import io
+    import contextlib
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        suricata_reader.score_eve_file(eve_path)
+
+    assert "first sig" in buf.getvalue()
+    assert "second sig" not in buf.getvalue()

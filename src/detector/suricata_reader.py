@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import time
 from datetime import datetime
 from pathlib import Path
@@ -32,15 +33,17 @@ from src.reporting.incidents import build_incident
 
 def _num(value) -> float:
     """
-    Coerce a Suricata counter to a float. Missing, null, or non-numeric values
-    become 0.0, so one malformed field cannot crash live scoring.
+    Coerce a Suricata counter to a float. Missing, null, non-numeric, or
+    non-finite (NaN/Infinity) values become 0.0, so one malformed field cannot
+    crash live scoring or later break scikit-learn's predict_proba().
     """
     if value is None:
         return 0.0
     try:
-        return float(value)
+        result = float(value)
     except (TypeError, ValueError):
         return 0.0
+    return result if math.isfinite(result) else 0.0
 
 
 def flow_to_features(flow_event: dict) -> dict:
@@ -149,12 +152,46 @@ def process_live_event(
     return incident
 
 
+def _process_eve_line(line: str, signatures_by_flow_id: dict) -> dict | None:
+    """Parse and handle one EVE JSON Lines record for tail_eve().
+
+    Returns an incident, or ``None`` if the line was malformed, was an alert
+    (cached, not scored), or was a flow that did not cross the alert threshold.
+
+    Malformed *input* (a non-JSON line, or valid JSON that isn't an object) is
+    skipped so one bad line can't stop the tail. Everything else -- a failed
+    model load, a feature-drift mismatch, or a JSON Lines persistence error --
+    is treated as an infrastructure failure and is allowed to propagate and
+    stop the caller, since silently discarding those would mean incidents go
+    missing without anyone noticing.
+
+    Suricata usually emits an alert (mid-flow) before the flow record (at flow
+    end). ``signatures_by_flow_id`` remembers the FIRST signature seen for each
+    flow_id -- the same first-signature-wins rule score_eve_file() uses -- and
+    drops it once the matching flow record is handled so the cache can't grow
+    unbounded.
+    """
+    try:
+        event = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(event, dict):
+        return None  # valid JSON but not an object -> malformed EVE record
+
+    if event.get("event_type") == "alert":
+        signature = extract_signature(event)
+        flow_id = event.get("flow_id")
+        if signature and flow_id is not None:
+            signatures_by_flow_id.setdefault(flow_id, signature)
+        return None
+
+    signature = signatures_by_flow_id.pop(event.get("flow_id"), None)
+    return process_live_event(event, suricata_signature=signature)
+
+
 def tail_eve(eve_path: Path) -> None:
     """Follow a Suricata EVE file and persist new high-priority incidents."""
     print(f"Tailing {eve_path} ... (Ctrl+C to stop)")
-    # Suricata usually emits an alert (mid-flow) before the flow record (at flow end),
-    # so remember signatures keyed by flow_id as alerts arrive and attach them when the
-    # matching flow closes. (Bounded cleanup could be added for very long captures.)
     signatures_by_flow_id: dict = {}
     with eve_path.open("r", encoding="utf-8") as f:
         f.seek(0, 2)  # jump to end so we only read NEW lines
@@ -163,24 +200,8 @@ def tail_eve(eve_path: Path) -> None:
             if not line:
                 time.sleep(0.5)
                 continue
-            try:
-                event = json.loads(line)
-            except json.JSONDecodeError:
-                continue
 
-            if event.get("event_type") == "alert":
-                signature = extract_signature(event)
-                flow_id = event.get("flow_id")
-                if signature and flow_id is not None:
-                    signatures_by_flow_id[flow_id] = signature
-                continue
-
-            try:
-                signature = signatures_by_flow_id.get(event.get("flow_id"))
-                incident = process_live_event(event, suricata_signature=signature)
-            except Exception as exc:  # one malformed event must never stop the tail
-                print(f"[skip] could not process event: {exc}")
-                continue
+            incident = _process_eve_line(line, signatures_by_flow_id)
 
             if incident is not None:
                 alert_info = {
@@ -245,6 +266,9 @@ def score_eve_file(eve_path: Path) -> None:
             except json.JSONDecodeError:
                 skipped += 1
                 continue
+            if not isinstance(event, dict):
+                skipped += 1  # valid JSON but not an object -> malformed EVE record
+                continue
 
             event_type = event.get("event_type")
             if event_type == "alert":
@@ -256,11 +280,7 @@ def score_eve_file(eve_path: Path) -> None:
             if event_type != "flow":
                 continue
 
-            try:
-                features = flow_to_features(event)
-            except Exception:  # malformed flow object/counters -> skip, don't abort
-                skipped += 1
-                continue
+            features = flow_to_features(event)
             flow_events.append(event)
             features_list.append(features)
 

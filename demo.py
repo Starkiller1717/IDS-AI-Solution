@@ -115,7 +115,8 @@ def main() -> None:
     print("=" * 70)
     print(
         f"Done. {triggered_count} of the demo flows triggered a high-priority "
-        f"alert (score >= {config.ALERT_THRESHOLD})."
+        f"alert (raw model probability >= {config.ALERT_THRESHOLD}; the displayed "
+        f"0-100 score is a rounded value and is not what the decision compares)."
     )
 
 

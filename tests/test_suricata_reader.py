@@ -5,8 +5,10 @@ These do NOT need a trained model — they only check the feature translation,
 which is the part most likely to silently break during integration.
 """
 
+import math
+
 from src import config
-from src.detector.suricata_reader import extract_signature, flow_to_features
+from src.detector.suricata_reader import _num, extract_signature, flow_to_features
 
 # A made-up "port scan"-style flow: one tiny packet out, nothing back.
 SCAN_FLOW = {
@@ -73,6 +75,40 @@ def test_null_and_string_counters_do_not_crash():
     assert feats["Total Backward Packets"] == 0.0
     assert feats["Total Length of Bwd Packets"] == 40.0
     assert feats["Flow Duration"] == 0.0
+
+
+def test_num_rejects_non_finite_numeric_values():
+    assert _num(float("nan")) == 0.0
+    assert _num(float("inf")) == 0.0
+    assert _num(float("-inf")) == 0.0
+
+
+def test_num_rejects_non_finite_string_values():
+    # json.loads() turns tokens like NaN/Infinity into these string forms too.
+    assert _num("NaN") == 0.0
+    assert _num("Infinity") == 0.0
+    assert _num("-Infinity") == 0.0
+
+
+def test_non_finite_counters_score_as_zero_not_nan():
+    flow = {
+        "event_type": "flow",
+        "dest_port": float("nan"),
+        "flow": {
+            "pkts_toserver": float("inf"),
+            "pkts_toclient": "NaN",
+            "bytes_toserver": "-Infinity",
+            "bytes_toclient": 40,
+        },
+    }
+    feats = flow_to_features(flow)
+    for value in feats.values():
+        assert math.isfinite(value)
+    assert feats["Destination Port"] == 0.0
+    assert feats["Total Fwd Packets"] == 0.0
+    assert feats["Total Backward Packets"] == 0.0
+    assert feats["Total Length of Fwd Packets"] == 0.0
+    assert feats["Total Length of Bwd Packets"] == 40.0
 
 
 def test_non_dict_flow_object_does_not_crash():

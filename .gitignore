@@ -7,17 +7,17 @@ env/
 .ipynb_checkpoints/
 .pytest_cache/
 
-# Datasets are large — keep them out of git. Download into data/ locally.
+# Datasets 
 data/*.csv
 data/MachineLearningCVE/
 data/zips/
 data/GeneratedLabelledFlows.zip
 
-# Real pcaps and Suricata output are large and regenerable — keep them local.
+# pcaps and Suricata output 
 data/pcaps/
 data/suricata-logs/
 
-# Trained models can be large/regenerated — keep the folder, ignore the artifacts.
+# Trained models artifacts.
 models/*.joblib
 models/*.pkl
 
