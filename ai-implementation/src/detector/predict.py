@@ -75,10 +75,10 @@ def _result_from_percent(attack_percent: float) -> dict:
     Turn an attack probability (expressed as a 0-100 percentage) into the result
     contract.
 
-    The classification and alert DECISIONS compare the raw, unrounded percentage, so
-    runtime matches the held-out metrics (measured at probability >= 0.50 and >= 0.95,
-    not on a rounded integer). `score` is a rounded display value only, so a borderline
-    flow can read e.g. 95 while sitting just under the alert threshold. Shared by
+    The classification and alert DECISIONS compare the raw, unrounded percentage
+    against config.CLASSIFICATION_THRESHOLD and config.ALERT_THRESHOLD, not a
+    rounded integer. `score` is a rounded display value only, so a borderline
+    flow can read e.g. 85 while sitting just under the alert threshold. Shared by
     predict() and predict_batch() so the two can never diverge.
     """
     return {

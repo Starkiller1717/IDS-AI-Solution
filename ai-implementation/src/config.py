@@ -34,10 +34,11 @@ FEATURE_COLUMNS_PATH = MODELS_DIR / "feature_columns.json"
 #   2. At 95+, is the result strong enough to raise a high-priority alert?
 #
 # The alert threshold was raised from the original design doc's 70 to 95 per
-# professor feedback. It only controls alerting; it does not trigger an
-# automatic block or network lockdown.
+# professor feedback, then lowered to 85 on 2026-07-14 after real captured
+# traffic failed to cross 95. It only controls alerting; it does not trigger
+# an automatic block or network lockdown.
 CLASSIFICATION_THRESHOLD = 50
-ALERT_THRESHOLD = 95
+ALERT_THRESHOLD = 85
 
 # ---------------------------------------------------------------------------
 # SURICATA-ALIGNED FEATURE SET  (the key integration decision)

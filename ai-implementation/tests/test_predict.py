@@ -43,12 +43,12 @@ def feature_row_for_score(score: int) -> dict:
     [
         (0.49, 49, "normal", False),
         (0.50, 50, "attack", False),
-        (0.94, 94, "attack", False),
-        (0.95, 95, "attack", True),
+        (0.84, 84, "attack", False),
+        (0.85, 85, "attack", True),
         # Decisions use the raw probability, not the rounded score, so these
         # sub-percent cases must NOT flip on the rounded display value:
-        (0.947, 95, "attack", False),  # displays 95 but 94.7 < 95 -> no alert
-        (0.953, 95, "attack", True),   # displays 95 and 95.3 >= 95 -> alert
+        (0.847, 85, "attack", False),  # displays 85 but 84.7 < 85 -> no alert
+        (0.853, 85, "attack", True),   # displays 85 and 85.3 >= 85 -> alert
         (0.497, 50, "normal", False),  # displays 50 but 49.7 < 50 -> classified normal
     ],
 )
@@ -77,7 +77,7 @@ def test_classification_and_alert_thresholds_are_separate(
 def test_predict_batch_matches_individual_predictions(monkeypatch):
     model = FeatureDrivenProbabilityModel()
     monkeypatch.setattr(predict_module, "_load_model", lambda: model)
-    feature_rows = [feature_row_for_score(score) for score in (49, 50, 94, 95)]
+    feature_rows = [feature_row_for_score(score) for score in (49, 50, 84, 85)]
 
     individual_results = [predict_module.predict(row) for row in feature_rows]
     batch_results = predict_module.predict_batch(feature_rows)
