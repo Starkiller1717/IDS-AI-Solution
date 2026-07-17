@@ -1,0 +1,1163 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_LOKI",
+      "label": "loki",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "loki",
+      "pluginName": "Loki"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "Bar gauge",
+      "version": ""
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.2.2"
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "Logs",
+      "version": ""
+    },
+    {
+      "type": "datasource",
+      "id": "loki",
+      "name": "Loki",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "piechart",
+      "name": "Pie chart",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Example using Suricata HoneyPot T-Pot TCE\r\nEve.json",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      },
+      "id": 6,
+      "options": {
+        "displayMode": "lcd",
+        "maxVizHeight": 300,
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (signature)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (alert_signature)\r\n(count_over_time({job=\"suricata_logs\"} \r\n| json | line_format \"{{.alert_signature}}\"\r\n[$__interval])))",
+          "hide": true,
+          "queryType": "range",
+          "refId": "B"
+        }
+      ],
+      "title": "Suricata Signature",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "ET INFO SSH-2.0-Go version string Observed in Network Traffic",
+                "ET MALWARE Possible Linux.Mirai Login Attempt (888888)",
+                "ET MALWARE Possible Linux.Mirai Login Attempt (anko)",
+                "ET POLICY MS Remote Desktop Administrator Login Request",
+                "ET POLICY RDP connection request",
+                "ET POLICY SSH session in progress on Expected Port",
+                "ET POLICY SSH session in progress on Unusual Port",
+                "ET SCAN Behavioral Unusually fast Terminal Server Traffic Potential Scan or Infection (Inbound)",
+                "ET SCAN NMAP -sS window 1024",
+                "ET SCAN Potential SSH Scan",
+                "ET SCAN Potential VNC Scan 5900-5920",
+                "ET SCAN Suspicious inbound to MSSQL port 1433",
+                "ET SCAN Suspicious inbound to PostgreSQL port 5432",
+                "ET SCAN Suspicious inbound to mySQL port 3306",
+                "GPL NETBIOS SMB-DS IPC$ share access",
+                "GPL NETBIOS SMB-DS IPC$ unicode share access",
+                "GPL POLICY MS Remote Desktop Request RDP",
+                "GPL TELNET Bad Login",
+                "SURICATA Applayer Mismatch protocol both directions",
+                "SURICATA SMB malformed request dialects",
+                "SURICATA STREAM FIN recv but no session",
+                "SURICATA STREAM Packet with broken ack",
+                "SURICATA STREAM RST recv but no session"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "description": "Change Max Data points in Loki query to obtain more records",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 0,
+        "y": 13
+      },
+      "id": 1,
+      "maxDataPoints": 15,
+      "options": {
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent",
+            "value"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (src_ip)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata IP's",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(192.168.*)",
+            "renamePattern": "IP Local"
+          }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 10,
+        "y": 13
+      },
+      "id": 2,
+      "options": {
+        "displayLabels": [
+          "name"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (event_type)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata Type Rules",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "alert",
+                "anomaly",
+                "dns",
+                "fileinfo",
+                "http",
+                "rdp",
+                "sip",
+                "smb",
+                "ssh",
+                "tftp",
+                "tls"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 0,
+        "y": 23
+      },
+      "id": 3,
+      "options": {
+        "displayLabels": [
+          "name"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (proto)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata Proto",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "IGMP",
+                "IPv6-ICMP",
+                "TCP",
+                "UDP"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 10,
+        "y": 23
+      },
+      "id": 5,
+      "options": {
+        "displayLabels": [
+          "name"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (dest_port)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata Destination Ports",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "135",
+                "1433",
+                "22",
+                "23",
+                "3306",
+                "3389",
+                "443",
+                "445",
+                "5060",
+                "53",
+                "5432",
+                "5555",
+                "8443"
+              ]
+            }
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(22.*)",
+            "renamePattern": "SSH 22"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(53.*)",
+            "renamePattern": "DNS 53"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(3389.*)",
+            "renamePattern": "VNC 3389"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(1433.*)",
+            "renamePattern": "MSSQL 1433"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(3306.*)",
+            "renamePattern": "MySQL 3306"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(445.*)",
+            "renamePattern": "SMB 445"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(443.*)",
+            "renamePattern": "HTTPS 443"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(23.*)",
+            "renamePattern": "Telnet 23"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(135.*)",
+            "renamePattern": "Netbios 135"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(5432.*)",
+            "renamePattern": "PostgreSQL 5432"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(5060.*)",
+            "renamePattern": "VOIP 5060"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(5555.*)",
+            "renamePattern": "ADB 5555"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(8443.*)",
+            "renamePattern": "Cisco Asa 8443"
+          }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 0,
+        "y": 33
+      },
+      "id": 8,
+      "options": {
+        "displayLabels": [
+          "name"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (severity)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata Severity",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "2",
+                "3",
+                "1"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 10,
+        "y": 33
+      },
+      "id": 7,
+      "options": {
+        "displayLabels": [
+          "name"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (category)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata Category",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Attempted Denial of Service",
+                "Attempted Information Leak",
+                "Detection of a Network Scan",
+                "Generic Protocol Command Decode",
+                "Misc Attack",
+                "Misc activity",
+                "Not Suspicious Traffic",
+                "Potentially Bad Traffic",
+                "Attempted Administrator Privilege Gain"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 0,
+        "y": 43
+      },
+      "id": 9,
+      "options": {
+        "displayLabels": [
+          "name"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (signature_id)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata Signature ID",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Time",
+                "2001117",
+                "2001219",
+                "2001329",
+                "2001972",
+                "2001978",
+                "2002752",
+                "2002911",
+                "2009582",
+                "2010935",
+                "2010937",
+                "2010939",
+                "2012709",
+                "2014384",
+                "2023753",
+                "2027413",
+                "2030387",
+                "2034857",
+                "2038967",
+                "2101251",
+                "2101447",
+                "2102465",
+                "2102466",
+                "2200007",
+                "2210016",
+                "2210037",
+                "2210041",
+                "2210051",
+                "2225005",
+                "2260001",
+                "2260002",
+                "2400004",
+                "2400007",
+                "2400008",
+                "2400013",
+                "2400014",
+                "2400021",
+                "2400023",
+                "2400029",
+                "2400037",
+                "2400054",
+                "2402000",
+                "2403303",
+                "2403305",
+                "2403307",
+                "2403309",
+                "2403313",
+                "2403321",
+                "2403360",
+                "2403374",
+                "2403381",
+                "2403382",
+                "2403385",
+                "2403397",
+                "2403398",
+                "2500050",
+                "2500052",
+                "2525000",
+                "2525002",
+                "2525005",
+                "2525006",
+                "2525007",
+                "2525008",
+                "2403301"
+              ]
+            }
+          }
+        }
+      ],
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "description": "Change Max Data points in Loki query to obtain more records",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 100,
+            "gradientMode": "hue",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 10,
+        "y": 43
+      },
+      "id": 11,
+      "maxDataPoints": 15,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.2.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, sum by (src_ip)\r\n(count_over_time({job=\"suricata_logs\"} \r\n[$__interval])))",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata IP's time series",
+      "transformations": [
+        {
+          "id": "prepareTimeSeries",
+          "options": {
+            "format": "multi"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "(192.168.*)",
+            "renamePattern": "IP Local"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 20,
+        "x": 0,
+        "y": 53
+      },
+      "id": 10,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "editorMode": "code",
+          "expr": "{job=\"suricata_logs\"} | json\r\n| line_format \" Client {{.src_ip_extracted}} with proto {{.proto_extracted}} event {{.event_type}} hits signature {{.signature}} category {{.alert_category}} and type {{.event_type_extracted}} and Signature ID {{.alert_signature_id}}\"",
+          "hide": false,
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Suricata raw log eve.json",
+      "type": "logs"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-12h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Suricata Log Eve JSON",
+  "uid": "ce3bwo1jl6bcwa",
+  "version": 64,
+  "weekStart": "",
+  "gnetId": 22247
+}
