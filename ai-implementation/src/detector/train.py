@@ -41,8 +41,13 @@ def load_dataset() -> pd.DataFrame:
     if not csv_paths:
         sys.exit(
             f"\nNo CSV files found in {config.DATA_DIR}.\n"
-            "Download the CICIDS2017 'MachineLearningCVE' CSVs and put them there.\n"
-            "See the README section 'Get the dataset' for the exact steps.\n"
+            "This repo does NOT include the CICIDS2017 'MachineLearningCVE' CSVs —\n"
+            "they're gitignored (~805 MB, 8 files). You need to get them separately:\n"
+            "  1. Fastest: ask a teammate who already has them to send you a zip.\n"
+            "  2. Otherwise: download from Kaggle ('CICIDS2017 MachineLearningCVE')\n"
+            "     or the official University of New Brunswick CIC dataset page.\n"
+            f"Then place them under {config.DATA_DIR} (see data/README.md for the\n"
+            "exact file list and expected path).\n"
         )
 
     print(f"Found {len(csv_paths)} CSV file(s). Loading...")

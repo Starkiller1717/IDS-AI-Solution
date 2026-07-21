@@ -11,10 +11,11 @@ THE CONTRACT (freeze this early — Willow's dashboard depends on it):
 
 BACKENDS
 --------
-- "template"  : fill-in-the-blanks, no AI. Always works, zero setup. DEFAULT.
-- "ollama"    : local open model (e.g. llama3.1:8b) via the Ollama app. Free,
-                offline, higher quality. Falls back to the template if Ollama
-                isn't running, so the pipeline never breaks.
+- "ollama"    : local open model (config.OLLAMA_MODEL) via the Ollama app. Free,
+                offline, higher quality. DEFAULT (config.REPORT_BACKEND). Falls
+                back to the template if Ollama isn't installed or running, so
+                the pipeline never breaks.
+- "template"  : fill-in-the-blanks, no AI. Always works, zero setup.
 
 Switching to Claude later would be a third backend with the same signature.
 """
@@ -23,10 +24,11 @@ from __future__ import annotations
 
 import json
 
+from src import config
 from src.reporting import prompts
 
 
-def generate_report(event: dict, backend: str = "template") -> str:
+def generate_report(event: dict, backend: str = config.REPORT_BACKEND) -> str:
     """Produce a plain-language incident report. See module docstring for `event`."""
     if backend == "ollama":
         try:
@@ -90,7 +92,7 @@ Recommended actions:
 # ---------------------------------------------------------------------------
 # Backend 2: local LLM via Ollama. Same input, nicer prose.
 # ---------------------------------------------------------------------------
-def _ollama_report(event: dict, model: str = "llama3.1:8b") -> str:
+def _ollama_report(event: dict, model: str = config.OLLAMA_MODEL) -> str:
     import ollama  # imported lazily so the template backend has zero dependencies
 
     user_prompt = prompts.REPORT_INSTRUCTIONS.format(
@@ -103,7 +105,14 @@ def _ollama_report(event: dict, model: str = "llama3.1:8b") -> str:
             {"role": "user", "content": user_prompt},
         ],
     )
-    return response["message"]["content"].strip()
+    text = response["message"]["content"].strip()
+
+    # Backstop, not just a prompt request: this system never blocks traffic or
+    # locks down the network, and the report must never imply otherwise. LLM
+    # instruction-following isn't guaranteed, so enforce it in code too.
+    if prompts.NO_AUTO_BLOCK_DISCLAIMER not in text:
+        text = f"{text}\n\n{prompts.NO_AUTO_BLOCK_DISCLAIMER}"
+    return text
 
 
 if __name__ == "__main__":

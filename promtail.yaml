@@ -6,42 +6,40 @@ positions:
   filename: /tmp/positions.yaml
 
 clients:
-  - url: http://192.168.10.10:3100/loki/api/v1/push
+  # Replace with the IP (or hostname) of the machine running Loki on your
+  # network -- this is per-person/per-lab-setup, not shared config.
+  - url: http://<YOUR_LOKI_HOST_IP>:3100/loki/api/v1/push
 
 scrape_configs:
   - job_name: suricata
-
-  pipeline_stages:
-    - json:
-        expressions:
-          src_ip: src_ip
-          proto: proto
-          event_type: event_type
-          dest_port: dest_port
-          alert: alert
-      
+    pipeline_stages:
       - json:
-        source: alert
-        expressions:
-          action: action
-          signature_id: signature_id
-          signature: signature
-          category: category
-          severity: severity
-    
-    - labels:
-        src_ip:
-        proto:
-        event_type:
-        dest_port:
-        signature_id:
-        signature:
-        category:
-        severity:
-        
+          expressions:
+            src_ip: src_ip
+            proto: proto
+            event_type: event_type
+            dest_port: dest_port
+            alert: alert
+      - json:
+          source: alert
+          expressions:
+            action: action
+            signature_id: signature_id
+            signature: signature
+            category: category
+            severity: severity
+      - labels:
+          src_ip:
+          proto:
+          event_type:
+          dest_port:
+          signature_id:
+          signature:
+          category:
+          severity:
     static_configs:
       - targets:
           - localhost
         labels:
-          job: suricata
+          job: suricata_logs
           __path__: /var/log/suricata/eve.json

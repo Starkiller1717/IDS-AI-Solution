@@ -102,12 +102,27 @@ def _duration_microseconds(start: str | None, end: str | None) -> float:
         return 0.0
 
 
-def extract_signature(event: dict) -> str | None:
-    """Return the Suricata alert signature from an 'alert' EVE event, or None."""
+def extract_signature(event: dict, max_severity: int = 2) -> str | None:
+    """Return the Suricata alert signature from an 'alert' EVE event, or None.
+
+    Suricata severity runs 1 (highest) to 3 (lowest/informational — protocol
+    anomalies, "ET INFO" traffic like Spotify P2P chatter). Only signatures at
+    ``max_severity`` or lower are returned, so informational noise can't
+    independently trigger an incident now that a correlated signature alone is
+    enough to do so (see ``build_incident``). Missing severity defaults to
+    included, since not every alert source (e.g. custom local rules without an
+    explicit classtype) reports it.
+    """
     alert = event.get("alert")
     if not isinstance(alert, dict):
         return None
-    return alert.get("signature") or None
+    signature = alert.get("signature") or None
+    if signature is None:
+        return None
+    severity = alert.get("severity")
+    if isinstance(severity, int) and severity > max_severity:
+        return None
+    return signature
 
 
 def handle_flow(flow_event: dict) -> dict | None:

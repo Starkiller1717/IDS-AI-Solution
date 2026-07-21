@@ -14,7 +14,9 @@ jupyter>=1.0
 # Testing
 pytest>=7.4
 
-# OPTIONAL — only needed if you use the local LLM backend for reports.
-# Ollama itself is a separate desktop install (https://ollama.com); this is just
-# the Python client. The template report backend works WITHOUT this.
-# ollama>=0.3
+# Local LLM report backend (default as of 2026-07-19, see src/config.py
+# REPORT_BACKEND). Ollama itself is a separate desktop install
+# (https://ollama.com) plus `ollama pull llama3.1:8b`; this is just the Python
+# client. If it's missing, or the Ollama app isn't running, report generation
+# automatically falls back to the template backend, which works without this.
+ollama>=0.3

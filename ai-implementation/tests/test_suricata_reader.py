@@ -130,3 +130,20 @@ def test_extract_signature_reads_alert_events_only():
     assert extract_signature({"event_type": "flow"}) is None
     assert extract_signature({"alert": None}) is None
     assert extract_signature({"alert": {}}) is None
+
+
+def test_extract_signature_excludes_low_severity_informational_alerts():
+    # Severity 3 (Suricata's lowest tier) is informational noise -- e.g. "ET INFO"
+    # traffic like Spotify P2P chatter -- and must not surface as a correlated
+    # signature now that a signature alone is enough to trigger an incident.
+    noisy_alert = {
+        "event_type": "alert",
+        "alert": {"signature": "ET INFO Spotify P2P Client", "severity": 3},
+    }
+    assert extract_signature(noisy_alert) is None
+
+    scan_alert = {
+        "event_type": "alert",
+        "alert": {"signature": "LOCAL SCAN Potential TCP port scan", "severity": 2},
+    }
+    assert extract_signature(scan_alert) == "LOCAL SCAN Potential TCP port scan"

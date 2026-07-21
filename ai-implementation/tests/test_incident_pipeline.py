@@ -33,6 +33,17 @@ ALERT_PREDICTION = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _template_report_backend(monkeypatch):
+    """This module tests incident-building/persistence logic, not report-backend
+    selection (that's covered in test_report.py and
+    test_build_incident_uses_configured_report_backend below) -- pin the backend
+    to "template" so assertions on exact report wording stay deterministic and
+    fast, regardless of whether Ollama happens to be installed/running on
+    whatever machine runs the suite."""
+    monkeypatch.setattr("src.reporting.incidents.config.REPORT_BACKEND", "template")
+
+
 def test_build_incident_returns_none_without_high_priority_alert(monkeypatch):
     def fail_if_called(*args, **kwargs):
         raise AssertionError("a non-alert must not generate a report")
@@ -123,6 +134,40 @@ def test_process_live_event_does_not_persist_non_alert(tmp_path, monkeypatch):
     assert not output_path.exists()
 
 
+def test_build_incident_triggers_on_suricata_signature_alone():
+    """A Suricata-native detection (e.g. a custom scan-detection rule) is enough to
+    generate an incident even when the single-flow ML model does not cross its
+    threshold — the two detection paths are independent, not ML-gated."""
+    incident = build_incident(
+        FLOW_EVENT,
+        {"classification": "normal", "score": 12, "is_alert_triggered": False},
+        suricata_signature="LOCAL SCAN Potential TCP port scan",
+    )
+
+    assert incident is not None
+    assert incident["suricata_signature"] == "LOCAL SCAN Potential TCP port scan"
+    assert "LOCAL SCAN Potential TCP port scan" in incident["report"]
+
+
+def test_process_live_event_persists_on_suricata_signature_alone(tmp_path, monkeypatch):
+    output_path = tmp_path / "incidents.jsonl"
+    monkeypatch.setattr(
+        "src.detector.predict.predict",
+        lambda features: {
+            "classification": "normal",
+            "score": 12,
+            "is_alert_triggered": False,
+        },
+    )
+
+    incident = process_live_event(
+        FLOW_EVENT, output_path, suricata_signature="LOCAL SCAN Potential TCP port scan"
+    )
+
+    assert incident is not None
+    assert json.loads(output_path.read_text(encoding="utf-8")) == incident
+
+
 def test_build_incident_includes_correlated_signature():
     incident = build_incident(
         FLOW_EVENT,
@@ -132,6 +177,39 @@ def test_build_incident_includes_correlated_signature():
 
     assert incident["suricata_signature"] == "ET SCAN Potential Nmap port scan"
     assert "ET SCAN Potential Nmap port scan" in incident["report"]
+
+
+def test_build_incident_uses_configured_report_backend(monkeypatch):
+    """build_incident() should default to config.REPORT_BACKEND (not a hardcoded
+    "template"), and an explicit `backend` argument should override it."""
+    captured_backends = []
+
+    def fake_generate_report(event, backend):
+        captured_backends.append(backend)
+        return "stub report"
+
+    monkeypatch.setattr(
+        "src.reporting.incidents.generate_report", fake_generate_report
+    )
+    monkeypatch.setattr("src.reporting.incidents.config.REPORT_BACKEND", "ollama")
+
+    build_incident(FLOW_EVENT, ALERT_PREDICTION)
+    build_incident(FLOW_EVENT, ALERT_PREDICTION, backend="template")
+
+    assert captured_backends == ["ollama", "template"]
+
+
+def test_build_incident_derives_attack_type_from_signature():
+    """The report should say what actually happened (e.g. a port scan) instead of
+    the generic default, when a Suricata signature is available to derive it from."""
+    incident = build_incident(
+        FLOW_EVENT,
+        ALERT_PREDICTION,
+        suricata_signature="LOCAL SCAN Potential TCP port scan - multiple SYNs from one source",
+    )
+
+    assert incident["attack_type"] == "potential TCP port scan"
+    assert "A potential TCP port scan was detected" in incident["report"]
 
 
 def test_process_live_event_threads_signature_into_incident(tmp_path, monkeypatch):

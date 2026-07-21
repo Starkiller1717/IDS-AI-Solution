@@ -1,0 +1,4 @@
+# Custom rules, kept separate from suricata-update's managed suricata.rules
+# so they survive future `suricata-update` runs (see README.md in this dir).
+
+alert tcp any any -> any any (msg:"LOCAL SCAN Potential TCP port scan - multiple SYNs from one source"; flags:S; threshold: type threshold, track by_src, count 5, seconds 10; classtype:attempted-recon; sid:1000001; rev:1;)

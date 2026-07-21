@@ -41,6 +41,21 @@ CLASSIFICATION_THRESHOLD = 50
 ALERT_THRESHOLD = 85
 
 # ---------------------------------------------------------------------------
+# Incident report backend
+# ---------------------------------------------------------------------------
+# "ollama" tries a local LLM (see reporting/report.py) for higher-quality prose.
+# If the `ollama` package isn't installed or the Ollama app isn't running on
+# this machine, generate_report() catches that and falls back to the template
+# backend automatically, so leaving this on "ollama" is always safe. Set to
+# "template" to skip the Ollama attempt entirely.
+REPORT_BACKEND = "ollama"
+# llama3.1:8b (~4.9GB) needs more VRAM than this project's test hardware has
+# (a 6GB laptop GPU) -- it OOM'd on GPU and was too slow on CPU fallback.
+# llama3.2:3b (~2GB) fits comfortably with headroom and is fast enough for a
+# short, fixed-format report; verified 2026-07-19.
+OLLAMA_MODEL = "llama3.2:3b"
+
+# ---------------------------------------------------------------------------
 # SURICATA-ALIGNED FEATURE SET  (the key integration decision)
 # ---------------------------------------------------------------------------
 # CICIDS2017 has ~80 features, but Suricata's live `flow` events only expose a
