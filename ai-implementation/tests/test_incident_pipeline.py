@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from src import config
 from src.detector.suricata_reader import _process_eve_line, process_live_event
 from src.reporting.incidents import build_incident
 
@@ -69,7 +70,8 @@ def test_build_incident_uses_consistent_schema_and_template_report():
     incident = build_incident(FLOW_EVENT, ALERT_PREDICTION)
 
     assert incident == {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
+        "flow_id": 111,
         "timestamp": "2026-07-04T12:00:00.000000+0000",
         "source_ip": "10.0.0.66",
         "destination_ip": "10.0.0.1",
@@ -77,6 +79,7 @@ def test_build_incident_uses_consistent_schema_and_template_report():
         "protocol": "TCP",
         "classification": "attack",
         "ml_score": 100,
+        "model_version": config.MODEL_VERSION,
         "alert_triggered": True,
         "attack_type": "high-risk network flow",
         "suricata_signature": None,
@@ -95,6 +98,7 @@ def test_build_incident_handles_missing_optional_flow_fields():
         ALERT_PREDICTION,
     )
 
+    assert incident["flow_id"] is None
     assert incident["timestamp"] is None
     assert incident["source_ip"] is None
     assert incident["destination_ip"] is None
@@ -102,6 +106,14 @@ def test_build_incident_handles_missing_optional_flow_fields():
     assert incident["protocol"] is None
     assert "an unknown address" in incident["report"]
     assert "an unknown time" in incident["report"]
+
+
+def test_build_incident_stamps_model_version_from_config():
+    """An incident should always be traceable to the exact model that scored
+    it, matching models/metadata.json's own model_version field."""
+    incident = build_incident(FLOW_EVENT, ALERT_PREDICTION)
+
+    assert incident["model_version"] == config.MODEL_VERSION
 
 
 def test_process_live_event_persists_alert_as_jsonl(tmp_path, monkeypatch):

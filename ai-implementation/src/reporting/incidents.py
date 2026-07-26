@@ -6,7 +6,7 @@ from src import config
 from src.reporting.report import generate_report
 
 
-INCIDENT_SCHEMA_VERSION = "1.0"
+INCIDENT_SCHEMA_VERSION = "1.1"
 DEFAULT_ATTACK_TYPE = "high-risk network flow"
 
 
@@ -79,6 +79,7 @@ def build_incident(
 
     return {
         "schema_version": INCIDENT_SCHEMA_VERSION,
+        "flow_id": flow_event.get("flow_id"),
         "timestamp": flow_event.get("timestamp"),
         "source_ip": flow_event.get("src_ip"),
         "destination_ip": flow_event.get("dest_ip"),
@@ -86,6 +87,7 @@ def build_incident(
         "protocol": flow_event.get("proto"),
         "classification": prediction.get("classification"),
         "ml_score": prediction.get("score"),
+        "model_version": config.MODEL_VERSION,
         "alert_triggered": True,
         "attack_type": attack_type,
         "suricata_signature": suricata_signature,
