@@ -43,3 +43,29 @@ scrape_configs:
         labels:
           job: suricata_logs
           __path__: /var/log/suricata/eve.json
+
+  - job_name: ai_incidents
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: ai_incidents
+          # Replace with the absolute path to output/incidents.jsonl on this
+          # machine -- per-person/per-lab-setup, not shared config. This is
+          # relative to config.PROJECT_ROOT, i.e. the inner ai-implementation/
+          # folder that contains src/, data/, and models/ (where
+          # `python -m src.detector.suricata_reader` is run from), not the
+          # outer repo checkout.
+          __path__: <PATH_TO_PROJECT_ROOT>/output/incidents.jsonl
+    pipeline_stages:
+      - json:
+          expressions:
+            classification: classification
+            attack_type: attack_type
+            alert_triggered: alert_triggered
+            protocol: protocol
+      - labels:
+          classification:
+          attack_type:
+          alert_triggered:
+          protocol:
