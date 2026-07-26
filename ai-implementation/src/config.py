@@ -25,13 +25,24 @@ MODELS_DIR = PROJECT_ROOT / "models"                  # trained model saved here
 
 MODEL_PATH = MODELS_DIR / "detector.joblib"
 FEATURE_COLUMNS_PATH = MODELS_DIR / "feature_columns.json"
+# Written by train.py next to the model: which package versions built it, when,
+# and on what feature list. `detector.joblib` is a bare RandomForestClassifier
+# and carries none of that, so without this file a teammate who loads the model
+# in a different environment has no way to tell whether they're in a supported
+# one. See src/smoke_test.py, which checks it.
+MODEL_METADATA_PATH = MODELS_DIR / "metadata.json"
+
+# Bump this whenever the model is retrained on different data, features, or
+# hyperparameters. train.py stamps it into metadata.json so a prediction can
+# always be traced back to the artifact that produced it.
+MODEL_VERSION = "1.0.0"
 
 # ---------------------------------------------------------------------------
 # Classification and alert thresholds
 # ---------------------------------------------------------------------------
 # The model's score answers two separate questions:
 #   1. At 50+, does the model lean toward ATTACK rather than BENIGN?
-#   2. At 95+, is the result strong enough to raise a high-priority alert?
+#   2. At 85+, is the result strong enough to raise a high-priority alert?
 #
 # The alert threshold was raised from the original design doc's 70 to 95 per
 # professor feedback, then lowered to 85 on 2026-07-14 after real captured

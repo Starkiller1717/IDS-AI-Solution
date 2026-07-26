@@ -1,0 +1,32 @@
+{
+  "model_version": "1.0.0",
+  "created_utc": "2026-06-16T20:44:08+00:00",
+  "source": "backfilled from existing artifact (not retrained)",
+  "model_type": "RandomForestClassifier",
+  "task": "binary: 0 = benign, 1 = attack",
+  "feature_columns": [
+    "Destination Port",
+    "Flow Duration",
+    "Total Fwd Packets",
+    "Total Backward Packets",
+    "Total Length of Fwd Packets",
+    "Total Length of Bwd Packets",
+    "Flow Bytes/s",
+    "Flow Packets/s",
+    "Fwd Packet Length Mean",
+    "Bwd Packet Length Mean"
+  ],
+  "n_features": 10,
+  "thresholds": {
+    "classification": 50,
+    "alert": 85
+  },
+  "environment": {
+    "python": "3.12.6",
+    "scikit-learn": "1.9.0",
+    "pandas": "3.0.3",
+    "numpy": "2.4.6",
+    "joblib": "1.5.3"
+  },
+  "note": "Backfilled 2026-07-25 for an artifact trained 2026-06-16, before train.py emitted metadata. Environment versions are those of the venv that wrote this file. NOT yet confirmed against this worktree's detector.joblib -- run `python -m src.smoke_test` to verify the model loads under these versions and scores correctly. Held-out metrics are in the project docs."
+}

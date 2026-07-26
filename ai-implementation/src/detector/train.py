@@ -21,7 +21,9 @@ This script is intentionally heavily commented because it's your learning materi
 from __future__ import annotations
 
 import json
+import platform
 import sys
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -90,6 +92,55 @@ def build_xy(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
+def build_metadata(metrics: dict | None = None, source: str = "train.py") -> dict:
+    """Describe the artifact we just saved, so it can be verified elsewhere.
+
+    `detector.joblib` is a bare RandomForestClassifier — it records no version,
+    no training date, and no metrics. When a teammate loads it on a different
+    machine and something looks wrong, this file is the only way to tell whether
+    they're in a supported environment or scoring against a stale artifact.
+
+    The package versions are read from the *live* interpreter, so this always
+    describes the environment that actually produced the pickle rather than
+    whatever `requirements-lock.txt` claims.
+    """
+    import joblib
+    import sklearn
+
+    metadata = {
+        "model_version": config.MODEL_VERSION,
+        "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source": source,
+        "model_type": "RandomForestClassifier",
+        "task": "binary: 0 = benign, 1 = attack",
+        "feature_columns": list(config.SURICATA_ALIGNED_FEATURES),
+        "n_features": len(config.SURICATA_ALIGNED_FEATURES),
+        "thresholds": {
+            "classification": config.CLASSIFICATION_THRESHOLD,
+            "alert": config.ALERT_THRESHOLD,
+        },
+        "environment": {
+            "python": platform.python_version(),
+            "scikit-learn": sklearn.__version__,
+            "pandas": pd.__version__,
+            "numpy": np.__version__,
+            "joblib": joblib.__version__,
+        },
+    }
+    if metrics:
+        metadata["metrics"] = metrics
+    return metadata
+
+
+def write_metadata(metrics: dict | None = None, source: str = "train.py") -> None:
+    """Save build_metadata() next to the model."""
+    config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    config.MODEL_METADATA_PATH.write_text(
+        json.dumps(build_metadata(metrics=metrics, source=source), indent=2),
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     df = load_dataset()
     df = clean(df)
@@ -145,9 +196,17 @@ def main() -> None:
     config.FEATURE_COLUMNS_PATH.write_text(
         json.dumps(config.SURICATA_ALIGNED_FEATURES, indent=2)
     )
+    write_metadata(
+        metrics={
+            "accuracy": round(accuracy, 5),
+            "false_positive_rate": round(fpr, 5),
+            "test_rows": int(len(y_test)),
+        }
+    )
     print(f"\nSaved model -> {config.MODEL_PATH}")
     print(f"Saved feature list -> {config.FEATURE_COLUMNS_PATH}")
-    print("\nNext: try `python -m src.detector.suricata_reader --demo`")
+    print(f"Saved build metadata -> {config.MODEL_METADATA_PATH}")
+    print("\nNext: verify the artifact with `python -m src.smoke_test`")
 
 
 if __name__ == "__main__":

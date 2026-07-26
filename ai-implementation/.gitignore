@@ -20,6 +20,31 @@ data/suricata-logs/
 # Trained models artifacts.
 models/*.joblib
 models/*.pkl
+# NOTE: models/feature_columns.json and models/metadata.json are intentionally
+# NOT ignored. They're tiny, and they're what lets someone verify which model
+# they're holding.
+
+# Handoff bundles built by scripts/package_artifacts.py (~19 MB, way over what
+# git should carry). Send these out of band -- OneDrive, Drive, scp.
+dist/
+*-for-partner.zip
+
+# Local pytest scratch. Only needed on machines where the default temp root has
+# a broken ACL; see pytest.ini.
+.pytest-tmp/
+
+# Runtime output. suricata_reader.py writes here on every tail/replay/live run
+# (see src/reporting/incident_writer.py) -- it differs per machine and per run
+# and grows by appending, so it's not something to track.
+output/
+
+# Captured EVE JSON used as test fixtures/scratch (e.g. from a real Suricata
+# capture during a live scan test). These are large, real-capture data, not
+# source -- same category as data/pcaps/ and data/suricata-logs/ above. If one
+# is worth keeping for the team, move it into data/suricata-logs/ (already
+# ignored) or hand it off out of band like the model artifacts, rather than
+# committing it here.
+scan_test_eve.json
 
 # OS junk
 .DS_Store
