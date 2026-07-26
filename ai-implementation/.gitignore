@@ -46,6 +46,9 @@ output/
 # committing it here.
 scan_test_eve.json
 
+# Per-machine environment overrides (see .env.example, which IS tracked).
+.env
+
 # OS junk
 .DS_Store
 Thumbs.db

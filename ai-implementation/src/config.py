@@ -14,6 +14,7 @@ features that Suricata can actually produce live. See SURICATA_ALIGNED_FEATURES.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -23,7 +24,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]   # .../senior-ai
 DATA_DIR = PROJECT_ROOT / "data"                      # CICIDS2017 CSVs go here
 MODELS_DIR = PROJECT_ROOT / "models"                  # trained model saved here
 
-MODEL_PATH = MODELS_DIR / "detector.joblib"
+# Every path/setting below can be overridden by an environment variable of the
+# same name (see .env.example). Unset -> falls back to the constant shown, so
+# nothing changes for local dev. This is what lets a deploy target (e.g. the
+# Suricata VM) point at its own paths without editing this tracked file.
+MODEL_PATH = Path(os.getenv("MODEL_PATH", str(MODELS_DIR / "detector.joblib")))
 FEATURE_COLUMNS_PATH = MODELS_DIR / "feature_columns.json"
 # Written by train.py next to the model: which package versions built it, when,
 # and on what feature list. `detector.joblib` is a bare RandomForestClassifier
@@ -36,6 +41,17 @@ MODEL_METADATA_PATH = MODELS_DIR / "metadata.json"
 # hyperparameters. train.py stamps it into metadata.json so a prediction can
 # always be traced back to the artifact that produced it.
 MODEL_VERSION = "1.0.0"
+
+# Path to a live/finished Suricata eve.json. No hardcoded default -- CLI flags
+# (--eve / --eve-once) take precedence, but a deploy target can set this once
+# (e.g. systemd Environment=EVE_PATH=/var/log/suricata/eve.json) and run
+# suricata_reader.py with no flags at all.
+EVE_PATH = Path(os.getenv("EVE_PATH")) if os.getenv("EVE_PATH") else None
+
+# Where scored incidents get appended as JSON Lines. Single source of truth for
+# both the app (incident_writer.py) and deploy-time tooling (promtail.yaml
+# needs to tail this same path).
+INCIDENTS_PATH = Path(os.getenv("INCIDENTS_PATH", str(PROJECT_ROOT / "output" / "incidents.jsonl")))
 
 # ---------------------------------------------------------------------------
 # Classification and alert thresholds
@@ -59,12 +75,17 @@ ALERT_THRESHOLD = 85
 # this machine, generate_report() catches that and falls back to the template
 # backend automatically, so leaving this on "ollama" is always safe. Set to
 # "template" to skip the Ollama attempt entirely.
-REPORT_BACKEND = "ollama"
+REPORT_BACKEND = os.getenv("REPORT_BACKEND", "ollama")
 # llama3.1:8b (~4.9GB) needs more VRAM than this project's test hardware has
 # (a 6GB laptop GPU) -- it OOM'd on GPU and was too slow on CPU fallback.
 # llama3.2:3b (~2GB) fits comfortably with headroom and is fast enough for a
 # short, fixed-format report; verified 2026-07-19.
 OLLAMA_MODEL = "llama3.2:3b"
+# The ollama Python package already reads OLLAMA_HOST from the environment on
+# its own when it builds the default client -- report.py's ollama.chat() call
+# picks it up with no code change needed. Exposed here too just so `config.py`
+# stays the one place to look for every environment-driven setting.
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
 # ---------------------------------------------------------------------------
 # SURICATA-ALIGNED FEATURE SET  (the key integration decision)

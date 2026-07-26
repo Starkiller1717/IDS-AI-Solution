@@ -8,7 +8,7 @@ from pathlib import Path
 from src import config
 
 
-DEFAULT_INCIDENTS_PATH = config.PROJECT_ROOT / "output" / "incidents.jsonl"
+DEFAULT_INCIDENTS_PATH = config.INCIDENTS_PATH
 
 
 def append_incident(

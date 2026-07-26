@@ -332,7 +332,11 @@ def score_eve_file(eve_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Score Suricata flows with the AI detector.")
-    parser.add_argument("--eve", type=Path, help="Path to a live, growing Suricata eve.json to tail.")
+    parser.add_argument(
+        "--eve", type=Path, default=config.EVE_PATH,
+        help="Path to a live, growing Suricata eve.json to tail. "
+             "Defaults to the EVE_PATH environment variable if set.",
+    )
     parser.add_argument(
         "--eve-once", type=Path,
         help="Path to a FINISHED eve.json (e.g. from offline `suricata -r`) to score once and exit.",
